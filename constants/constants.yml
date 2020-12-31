@@ -1,0 +1,42 @@
+# Constant config version: "1.1.L31.2 ($Rev: 10 $)"
+# Database constants connection data
+# POSTGRESQL DATABASE DATA
+DB_RDS:
+  SQL_DRIVER: 'postgresql'
+  USER_DB: 'postgres'
+  PASSWORD_DB: 'postgres'
+  HOST_DB: 'ec2-3-88-184-169.compute-1.amazonaws.com'
+  PORT_DB: '5432'
+  DATABASE_NAME: 'urbvan_test'
+
+# DATABASE TABLES NAME
+DB_OBJECTS:
+  ORDER_H: 'van_vehicle'
+
+DB_AUTH_OBJECT:
+  USERS_AUTH: 'user_auth_api'
+
+DB_AUTH_COLUMNS_DATA:
+  USER_AUTH:
+    USER_ID: user_id
+    USER_PASSWORD: password
+    USER_NAME: username
+    PASSWORD_HASH: password_hash
+    LAST_UPDATE_DATE: last_update_date
+
+DB_COLUMNS_DATA:
+  VAN_VEHICLE:
+    UUID_VAN: uuid_van
+    PLATES_VAN: plates_van
+    ECONOMIC_NUMBER: economic_number_van
+    SEATS_VAN: seats_van
+    CREATED_AT: created_at
+    STATUS_VAN: status_van
+
+LOG_RESOURCE:
+  FILE_EXTENSION: '.log'
+  WS_FILE_LOG_NAME: 'api_ws_'
+  DB_FILE_LOG_NAME: 'api_db_'
+  APP_FILE_LOG_NAME: 'app_'
+  # DIRECTORY_LOG_FILES: '/ofix/tienda_virtual/parserCt/logs/' # TEST
+  DIRECTORY_LOG_FILES: '/var/www/html/apiTestOrdersTV/logs/' # PROD
