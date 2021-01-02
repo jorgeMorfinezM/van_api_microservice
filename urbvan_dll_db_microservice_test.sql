@@ -71,6 +71,7 @@ CREATE TABLE urbvan.van_vehicle (
 	seats_van numeric NOT NULL, -- Cantidad de asientos disponibles por camioneta
 	created_at date NULL, -- Fecha de alta de la VAN
 	status_van varchar NOT NULL DEFAULT 'Activa'::character varying, -- Posibles estatus de la VAN: “Activa”, “En reparación”, “Baja”
+	last_update_date timestamp(0) NULL, -- Contiene la fecha de actualizacion del registro
 	CONSTRAINT van_vehicle_check CHECK (((status_van)::text = ANY ((ARRAY['Activo'::character varying, 'En reparacion'::character varying, 'Baja'::character varying])::text[]))),
 	CONSTRAINT van_vehicle_pk PRIMARY KEY (uuid_van),
 	CONSTRAINT van_vehicle_un UNIQUE (uuid_van, plates_van)
@@ -85,14 +86,12 @@ COMMENT ON COLUMN urbvan.van_vehicle.economic_number_van IS 'Una nomenclatura pa
 COMMENT ON COLUMN urbvan.van_vehicle.seats_van IS 'Cantidad de asientos disponibles por camioneta';
 COMMENT ON COLUMN urbvan.van_vehicle.created_at IS 'Fecha de alta de la VAN';
 COMMENT ON COLUMN urbvan.van_vehicle.status_van IS 'Posibles estatus de la VAN: “Activa”, “En reparación”, “Baja”';
+COMMENT ON COLUMN urbvan.van_vehicle.last_update_date IS 'Contiene la fecha de actualizacion del registro';
 
 -- Permissions
 
 ALTER TABLE urbvan.van_vehicle OWNER TO postgres;
 GRANT ALL ON TABLE urbvan.van_vehicle TO postgres;
-
-
-
 
 -- Permissions
 

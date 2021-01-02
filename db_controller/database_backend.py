@@ -192,13 +192,13 @@ def exists_data_row(table_name, column_name, column_filter1, value1, column_filt
             else:
                 row_data = r_e[column_name]
 
-            row_exists.close()
+            # row_exists.close()
 
             close_cursor(cursor)
 
     except SQLAlchemyError as error:
         conn.rollback()
-        logger.exception('An exception was occurred while execute transactions: %s', error)
+        logger.exception('An exception was occurred while execute transaction: %s', error)
     finally:
         disconnect_from_db(conn)
 
@@ -210,32 +210,41 @@ def validate_transaction(table_name,
                          column_filter1, value1,
                          column_filter2, value2,
                          column_filter3, value3):
-
+    conn = None
+    cursor = None
     row_data = None
-    conn = session_to_db()
-    cursor = conn.cursor()
 
-    sql_exists = 'SELECT {} FROM {} WHERE {} = {} AND {} = {} AND {} = {}'.format(column_name, table_name,
-                                                                                  column_filter1, value1,
-                                                                                  column_filter2, "'" + value2 + "'",
-                                                                                  column_filter3, "'" + value3 + "'")
+    try:
+        conn = session_to_db()
+        cursor = conn.cursor()
 
-    cursor.execute(sql_exists)
+        sql_exists = 'SELECT {} FROM {} WHERE {} = {} AND {} = {} AND {} = {}'.format(column_name, table_name,
+                                                                                      column_filter1, value1,
+                                                                                      column_filter2, "'" + value2 + "'",
+                                                                                      column_filter3, "'" + value3 + "'")
 
-    row_exists = cursor.fetchone()
+        cursor.execute(sql_exists)
 
-    for r_e in row_exists:
+        row_exists = cursor.fetchone()
 
-        logger.info('Row Info in Query: %s', str(r_e))
+        for r_e in row_exists:
 
-        if r_e is None:
-            r_e = None
-        else:
-            row_data = r_e[column_name]
+            logger.info('Row Info in Query: %s', str(r_e))
 
-        row_exists.close()
+            if r_e is None:
+                r_e = None
+            else:
+                row_data = r_e[column_name]
 
-        return row_data
+            close_cursor(cursor)
+
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception was occurred while execute transaction: %s', error)
+    finally:
+        disconnect_from_db(conn)
+
+    return row_data
 
 
 class UrbvanModelDb(Base):
@@ -254,151 +263,173 @@ class UrbvanModelDb(Base):
 
         van_data = {}
 
-        try:
-            # session = self
+        # session = self
 
-            if exists_data_row(self.__tablename__,
-                               self.uuid_van,
-                               self.uuid_van,
-                               uuid_van,
-                               self.plates_van,
-                               plates_van):
+        if exists_data_row(self.__tablename__,
+                           self.uuid_van,
+                           self.uuid_van,
+                           uuid_van,
+                           self.plates_van,
+                           plates_van):
 
-                van_data = insert_new_van(self.__tablename__,
-                                          uuid_van,
-                                          plates_van,
-                                          economic_number_van,
-                                          seats_van,
-                                          status_van)
-            else:
-                pass
-
-        except SQLAlchemyError as error:
-            session.rollback()
-            logger.exception('An exception was occurred while execute transactions: %s', error)
-        finally:
-            session.close()
+            van_data = update_van_data(self.__tablename__,
+                                       uuid_van,
+                                       plates_van,
+                                       economic_number_van,
+                                       seats_van,
+                                       status_van)
+        else:
+            van_data = insert_new_van(self.__tablename__,
+                                      uuid_van,
+                                      plates_van,
+                                      economic_number_van,
+                                      seats_van,
+                                      status_van)
 
         return van_data
 
 
 def insert_new_van(table_name, uuid_van, plates_van, economic_number_van, seats_van, status_van):
-    conn = session_to_db()
 
-    cursor = conn.cursor()
-
-    created_at = get_datenow_from_db(conn)
-
-    data = (uuid_van, plates_van, economic_number_van, seats_van, created_at, status_van,)
-
-    sql_van_insert = 'INSERT INTO {} (uuid_van, plates_van, economic_number_van, seats_van, created_at, status_van) ' \
-                     'VALUES (%s, %s, %s, %s)'.format(table_name)
-
-    cursor.execute(sql_van_insert, data)
-
-    conn.commit()
-
-    logger.info('Usuario insertado %s', "{0}, User_Name: {1}".format(user_id, user_name))
-
-    close_cursor(cursor)
-
-    row_exists = validate_transaction(table_name,
-                                      'uuid_van',
-                                      'uuid_van', uuid_van,
-                                      'plates_van', plates_van,
-                                      'economic_number_van', economic_number_van)
-
-    if str(uuid_van) not in str(row_exists):
-
-        session.add(new_order_line)
-
-        session.commit()
-
-        order_line_inserted += [{
-            "OrderId": order_id,
-            "TipoPedido": tipo_pedido,
-            "OrderItemGUID": order_item_guid,
-            "Sku": sku,
-            "Message": 'Item_Inserted'
-        }]
-
-    else:
-        order_line_inserted += [{
-            "OrderId": order_id,
-            "TipoPedido": tipo_pedido,
-            "OrderItemGUID": order_item_guid,
-            "Sku": sku,
-            "Message": 'Already_Inserted'
-        }]
-
-    order_line_data = json.dumps(order_line_inserted)
-
-    return order_line_data
-
-
-def update_status_order_item(session, table_name, order_id, order_type, item_status, sku_item):
-    item_status_updated = []
-
-    item_status_data = {}
+    conn = None
+    cursor = None
+    van_data_inserted = dict()
 
     try:
-        sql_status_item = " UPDATE {} " \
-                          " SET status = {} " \
-                          " WHERE orderid = {} " \
-                          " AND tipo_pedido = {} " \
-                          " AND sku = {}".format(table_name,
-                                                 "'" + item_status + "'",
-                                                 order_id,
-                                                 "'" + order_type + "'",
-                                                 "'" + sku_item + "'")
+        conn = session_to_db()
 
-        status_item = session.execute(sql_status_item)
+        cursor = conn.cursor()
 
-        if status_item is not None:
+        created_at = get_datenow_from_db(conn)
 
-            row_exists = validate_transaction(session,
-                                              table_name,
-                                              'status',
-                                              'orderid', order_id,
-                                              'tipo_pedido', order_type,
-                                              'sku', sku_item)
+        data_insert = (uuid_van, plates_van, economic_number_van, seats_van, created_at, status_van,)
 
-            if str(status_item) in str(row_exists):
-                item_status_updated += [{
-                    "OrderId": order_id,
-                    "TipoPedido": order_type,
-                    "StatusOK": 'OK',
-                    "StatusItem": item_status,
-                    "SKU": sku_item
-                }]
+        sql_van_insert = 'INSERT INTO {} ' \
+                         '(uuid_van, ' \
+                         'plates_van, ' \
+                         'economic_number_van, ' \
+                         'seats_van, ' \
+                         'created_at, ' \
+                         'status_van, ' \
+                         'last_update_date) ' \
+                         'VALUES (%s, %s, %s, %s, NOW())'.format(table_name)
+
+        cursor.execute(sql_van_insert, data_insert)
+
+        conn.commit()
+
+        logger.info('Vsn Vehicle inserted %s', "{0}, Plate: {1}".format(uuid_van, plates_van))
+
+        close_cursor(cursor)
+
+        row_exists = validate_transaction(table_name,
+                                          'uuid_van',
+                                          'uuid_van', uuid_van,
+                                          'plates_van', plates_van,
+                                          'economic_number_van', economic_number_van)
+
+        if str(uuid_van) not in str(row_exists):
+
+            van_data_inserted = {
+                "UUID": uuid_van,
+                "Plate": plates_van,
+                "EconomicNumber": economic_number_van,
+                "SeatsNumber": seats_van,
+                "Status": status_van,
+                "CreationDate": created_at,
+                "Message": "Van Inserted Successful",
+            }
+
+        else:
+            van_data_inserted = {
+                "UUID": uuid_van,
+                "Plate": plates_van,
+                "EconomicNumber": economic_number_van,
+                "SeatsNumber": seats_van,
+                "Status": status_van,
+                "CreationDate": created_at,
+                "Message": "Van already Inserted",
+            }
+
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception was occurred while execute transaction: %s', error)
+    finally:
+        disconnect_from_db(conn)
+
+    return json.dumps(van_data_inserted)
+
+
+def update_van_data(table_name, uuid_van, plates_van, economic_number_van, seats_van, status_van):
+
+    conn = None
+    cursor = None
+    van_data_inserted = dict()
+
+    try:
+        conn = session_to_db()
+
+        cursor = conn.cursor()
+
+        last_update_date = get_datenow_from_db(conn)
+
+        # update row to database
+        sql_update_van = "UPDATE {} SET economic_number_van=%s, seats_van=%s, status_van=%s, last_update_date = NOW()" \
+                         " WHERE uuid_van=%s AND plates_van=%s".format(table_name)
+
+        cursor.execute(sql_update_van, (economic_number_van, seats_van, status_van, uuid_van, plates_van,))
+
+        conn.commit()
+
+        close_cursor(cursor)
+
+        row_exists = validate_transaction(table_name,
+                                          'status_van',
+                                          'uuid_van', uuid_van,
+                                          'plates_van', plates_van,
+                                          'economic_number_van', economic_number_van)
+
+        if str(status_van) in str(row_exists):
+
+            van_data_inserted = {
+                "UUID": uuid_van,
+                "Plate": plates_van,
+                "EconomicNumber": economic_number_van,
+                "SeatsNumber": seats_van,
+                "Status": status_van,
+                "LastUpdateDate": last_update_date,
+                "Message": "Van Updated Successful",
+            }
 
         else:
 
-            item_status_updated += [{
-                "OrderId": order_id,
-                "TipoPedido": order_type,
-                "StatusOK": 'FAIL',
-                "StatusItem": item_status,
-                "SKU": sku_item
-            }]
+            van_data_inserted = {
+                "UUID": uuid_van,
+                "Plate": plates_van,
+                "EconomicNumber": economic_number_van,
+                "SeatsNumber": seats_van,
+                "Status": status_van,
+                "LastUpdateDate": last_update_date,
+                "Message": "Van not updated",
+            }
 
             logger.error('Can not read the recordset, beacause is not stored')
             raise SQLAlchemyError(
                 "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
             )
 
-        item_status_data = json.dumps(item_status_updated)
-
-        session.commit()
-
-        status_item.close()
-
-    except SQLAlchemyError as sql_exec:
-        logger.exception(sql_exec)
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception was occurred while execute transaction: %s', error)
     finally:
-        session.close()
+        disconnect_from_db(conn)
 
-    return item_status_data
+    return json.dumps(van_data_inserted)
+
+
+def delete_van_data():
+
+    "DELETE FROM urbvan.van_vehicle WHERE uuid_van=? AND plates_van=''"
 
 
 def select_orders_header_cnc(session, table_name):
