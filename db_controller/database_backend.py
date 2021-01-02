@@ -127,19 +127,14 @@ def create_cursor(conn):
     return cursor
 
 
-def disconnect_from_db_postgre(conn):
+def disconnect_from_db(conn):
     if conn is not None:
         conn.close()
 
 
-def close_cursor_postgre(cursor):
+def close_cursor(cursor):
     if cursor is not None:
         cursor.close()
-
-
-def disconnect_from_db(session):
-    if session is not None:
-        session.close()
 
 
 def get_systimestamp_date(session):
@@ -169,75 +164,65 @@ def get_datenow_from_db(conn):
     return last_updated_date
 
 
-def exists_data_row(session, table_name, column_name, column_filter1, value1, column_filter2, value2):
-    # value1 = scrub(value1)
-    # value2 = scrub(value2)
+def exists_data_row(table_name, column_name, column_filter1, value1, column_filter2, value2):
 
-    # Column_validate = brand
-    # table_name = tv_int_marcas_ofix_v
-    # column_filter1 = integracion_id
-    # value1 = 2
-    # column_filter2 = marca_id
-    # value2 = '102'
-
+    conn = None
+    cursor = None
     row_data = None
 
-    sql_exists = f"SELECT {column_name} FROM {table_name} " \
-                 f"WHERE {column_filter1} = {value1} AND {column_filter2} = '{value2}'"
+    try:
+        conn = session_to_db()
+        cursor = conn.cursor()
 
-    # sql_exists = ("SELECT %(column_name)s "
-    #               "FROM %(table_name)s "
-    #               "WHERE %(column_filter1)s=%(value1)s AND %(column_filter2)s=%(value2)s",
-    #               dict(column_name=column_name, table_name=table_name, column_filter1=column_filter1, value1=value1,
-    #                    column_filter2=column_filter2, value2=value2))
+        sql_exists = f"SELECT {column_name} FROM {table_name} " \
+                     f"WHERE {column_filter1} = {value1} AND {column_filter2} = '{value2}'"
 
-    row_exists = session.execute(sql_exists)
+        cursor.execute(sql_exists)
 
-    for r_e in row_exists:
+        row_exists = cursor.fetchone()[0]
 
-        logger.info('Row Info in Query: %s', str(r_e))
+        # row_exists = session.execute(sql_exists)
 
-        if r_e is None:
-            r_e = None
-        else:
-            row_data = r_e[column_name]
+        for r_e in row_exists:
 
-        row_exists.close()
+            logger.info('Row Info in Query: %s', str(r_e))
 
-        return row_data
+            if r_e is None:
+                r_e = None
+            else:
+                row_data = r_e[column_name]
+
+            row_exists.close()
+
+            close_cursor(cursor)
+
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception was occurred while execute transactions: %s', error)
+    finally:
+        disconnect_from_db(conn)
+
+    return row_data
 
 
-def exists_data_row_item(session, table_name,
+def validate_transaction(table_name,
                          column_name,
                          column_filter1, value1,
                          column_filter2, value2,
                          column_filter3, value3):
-    # value1 = scrub(value1)
-    # value2 = scrub(value2)
-
-    # Column_validate = brand
-    # table_name = tv_int_marcas_ofix_v
-    # column_filter1 = integracion_id
-    # value1 = 2
-    # column_filter2 = marca_id
-    # value2 = '102'
 
     row_data = None
+    conn = session_to_db()
+    cursor = conn.cursor()
 
     sql_exists = 'SELECT {} FROM {} WHERE {} = {} AND {} = {} AND {} = {}'.format(column_name, table_name,
                                                                                   column_filter1, value1,
                                                                                   column_filter2, "'" + value2 + "'",
                                                                                   column_filter3, "'" + value3 + "'")
 
-    # sql_exists = ("SELECT %(column_name)s "
-    #               "FROM %(table_name)s "
-    #               "WHERE %(column_filter1)s = %(value1)s "
-    #               "AND %(column_filter2)s = %(value2)s "
-    #               "AND %(column_filter3)s = %(value3)s",
-    #               dict(column_name=column_name, table_name=table_name, column_filter1=column_filter1, value1=value1,
-    #                    column_filter2=column_filter2, value2=value2, column_filter3=column_filter3, value3=value3))
+    cursor.execute(sql_exists)
 
-    row_exists = session.execute(sql_exists)
+    row_exists = cursor.fetchone()
 
     for r_e in row_exists:
 
@@ -253,161 +238,40 @@ def exists_data_row_item(session, table_name,
         return row_data
 
 
-def get_order_line_additional_data(session, table_name1, table_name2, tienda_virtual_id, sku):
-
-    order_data_line = {}
-
-    data_lines_order = {}
-
-    try:
-
-        sql_additional_data = ' SELECT si.sku_base, ' \
-                              '        si.numero_articulo_fabricante, ' \
-                              '        si.inventory_item_id, ' \
-                              '        si.primary_uom_code uom, ' \
-                              '        si.tax_code, ' \
-                              '        tvo.vendor_id, ' \
-                              '        claveprodserv, ' \
-                              '        claveunidad, ' \
-                              '        cveimpuesto, ' \
-                              '        tipofactor, ' \
-                              '        tasaocuota, ' \
-                              '        gtin ' \
-                              ' FROM {} si, ' \
-                              '      {} tvo ' \
-                              ' WHERE si.sku = {} ' \
-                              ' AND tvo.tienda_virtual_id = {}'.format(table_name1,
-                                                                       table_name2,
-                                                                       "'" + sku + "'",
-                                                                       tienda_virtual_id)
-
-        data_line = session.execute(sql_additional_data)
-
-        for d_l in data_line:
-            if d_l is not None:
-
-                sku = d_l['sku_base']
-                manufacturer_part_number = d_l['numero_articulo_fabricante']
-                inventory_item_id = d_l['inventory_item_id']
-                unit_of_measure = d_l['uom']
-                tax_code = d_l['tax_code']
-                vendor_id = d_l['vendor_id']
-                claveprod_sat = d_l['claveprodserv']
-                claveunidad_sat = d_l['claveunidad']
-                cveimpuesto_sat = d_l['cveimpuesto']
-                tipofactor_sat = d_l['tipofactor']
-                tasaocuota_sat = d_l['tasaocuota']
-                product_id = d_l['gtin']
-
-                order_data_line = {
-                    "OrderDataLine": {
-                        "Sku": sku,
-                        "ManufacturerPartNumber": manufacturer_part_number,
-                        "InventoryItemId": inventory_item_id,
-                        "UOM": unit_of_measure,
-                        "TaxCode": tax_code,
-                        "VendorId": vendor_id,
-                        "ClaveProducto": claveprod_sat,
-                        "ClaveUnidad": claveunidad_sat,
-                        "ClaveImpuesto": cveimpuesto_sat,
-                        "TipoFactor": tipofactor_sat,
-                        "TasaOCuota": tasaocuota_sat,
-                        "ProductId": product_id
-                    }
-                }
-
-            else:
-                logger.error('Can not read the recordset, beacause is not stored')
-
-                order_data_line = {
-                    "OrderDataLine": {
-                        "Sku": sku,
-                        "ManufacturerPartNumber": ' ',
-                        "InventoryItemId": '0',
-                        "UOM": ' ',
-                        "TaxCode": ' ',
-                        "VendorId": '-1',
-                        "ClaveProducto": ' ',
-                        "ClaveUnidad": ' ',
-                        "ClaveImpuesto": ' ',
-                        "TipoFactor": ' ',
-                        "TasaOCuota": ' ',
-                        "ProductId": ' '
-                    }
-                }
-
-                raise SQLAlchemyError(
-                    "Can\'t read data because it\'s not stored in table {}, SQL Exception".format(table_name1)
-                )
-
-        data_lines_order = json.dumps(order_data_line)
-
-        data_line.close()
-
-    except SQLAlchemyError as sql_exc:
-        logger.exception(sql_exc)
-    # finally:
-    #    session.close()
-
-    return data_lines_order
-
-
-class OrderDetail(Base):
+class UrbvanModelDb(Base):
     cfg = get_config_constant_file()
 
-    __tablename__ = cfg['DB_ORACLE_OBJECTS']['ORDER_L']
+    __tablename__ = cfg['DB_OBJECTS']['VAN_TABLE']
 
-    tipo_pedido = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['TIPO_PEDIDO'], String, primary_key=True)
-    order_id = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['ORDER_ID'], Numeric, primary_key=True)
-    order_item_guid = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['ORDER_ITEM_GUID'], String)
-    product_id = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['PRODUCT_ID'], Numeric)
-    product_name = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['PRODUCT_NAME'], String)
-    sku = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['SKU'], String, primary_key=True)
-    manufacturer_part_number = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['MANUFACTURER_PARTNUMBER'], String)
-    vendor_id = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['VENDOR_ID'], Numeric)
-    unit_price_incl_tax = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['UNITPRICE_INC_TAX'], Numeric)
-    unit_price_excl_tax = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['UNITPRICE_EXC_TAX'], Numeric)
-    price_incl_tax = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['PRICE_INC_TAX'], Numeric)
-    price_excl_tax = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['PRICE_EXC_TAX'], Numeric)
-    quantity = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['QUANTITY'], Numeric)
-    discount_amount_incl_tax = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['DISCOUNT_AMOUNT_INC_TAX'], Numeric)
-    discount_amount_excl_tax = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['DISCOUNT_AMOUNT_EXC_TAX'], Numeric)
-    created_by = Column(cfg['DB_COLUMNS_DATA']['USER_ID'], Numeric)
-    last_updated_by = Column(cfg['DB_COLUMNS_DATA']['USER_UPD_ID'], Numeric)
-    uom = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['UNIT_OF_MEASURE'], String)
-    line_number = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['LINE_NUMBER'], Numeric)
-    inventory_item = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['INVENTORY_ITEM'], String)
-    inventory_item_id = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['INVENTORY_ITEM_ID'], Numeric)
-    tax_code = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['TAX_CODE'], String)
-    status_item = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['STATUS_ITEM'], String)
-    item_comment = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['ITEM_COMMENTS'], String)
-    agreement_item = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['AGREEMENT_ITEM'], String)
-    clave_prod_serv_sat = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['CLAVE_PRODUCTO_SERV'], String)
-    clave_unidad_sat = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['CLAVE_UNIDAD'], String)
-    clave_impuesto_sat = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['CLAVE_IMPUESTO'], String)
-    tipo_factor_sat = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['TIPO_FACTOR'], String)
-    tasaocuota_sat = Column(cfg['DB_COLUMNS_DATA']['ORDER_DETAIL']['TASA_O_CUOTA'], String)
+    uuid_van = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['UUID_VAN'], String, primary_key=True)
+    plates_van = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['PLATES_VAN'], String)
+    economic_number_van = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['ECONOMIC_NUMBER'], String)
+    seats_van = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['SEATS_VAN'], Numeric)
+    created_at = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['CREATED_AT'], String)
+    status_van = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['STATUS_VAN'], String)
 
-    def manage_orders_lines(self, tipo_pedido, order_id, order_item_guid, product_id, product_name, sku,
-                            manufacturer_part_number, vendor_id, unit_price_incl_tax, unit_price_excltax,
-                            price_incl_tax, price_excl_tax, quantity, discount_amount_incl_tax,
-                            discount_amount_excl_tax, uom, line_number, inventory_item, inventory_item_id, tax_code,
-                            item_comment, agreement_item, clave_prod_sat, clave_unidad_sat, clave_impuesto_sat,
-                            tipo_factor_sat, tasaocuota_sat):
+    def manage_van_vehicle_data(self, uuid_van, plates_van, economic_number_van, seats_van, created_at, status_van):
 
-        order_line_data = {}
+        van_data = {}
 
         try:
-            session = self
+            # session = self
 
-            order_line_data = insert_new_order_line(session, tipo_pedido, order_id, order_item_guid, product_id,
-                                                    product_name, sku, manufacturer_part_number, vendor_id,
-                                                    unit_price_incl_tax, unit_price_excltax, price_incl_tax,
-                                                    price_excl_tax, quantity, discount_amount_incl_tax,
-                                                    discount_amount_excl_tax, uom, line_number, inventory_item,
-                                                    inventory_item_id, tax_code, item_comment, agreement_item,
-                                                    clave_prod_sat, clave_unidad_sat, clave_impuesto_sat,
-                                                    tipo_factor_sat, tasaocuota_sat)
+            if exists_data_row(self.__tablename__,
+                               self.uuid_van,
+                               self.uuid_van,
+                               uuid_van,
+                               self.plates_van,
+                               plates_van):
+
+                van_data = insert_new_van(self.__tablename__,
+                                          uuid_van,
+                                          plates_van,
+                                          economic_number_van,
+                                          seats_van,
+                                          status_van)
+            else:
+                pass
 
         except SQLAlchemyError as error:
             session.rollback()
@@ -415,73 +279,36 @@ class OrderDetail(Base):
         finally:
             session.close()
 
-        return order_line_data
+        return van_data
 
 
-def insert_new_order_line(session, tipo_pedido, order_id, order_item_guid, product_id, product_name, sku,
-                          manufacturer_part_number, vendor_id, unit_price_incl_tax, unit_price_excltax,
-                          price_incl_tax, price_excl_tax, quantity, discount_amount_incl_tax,
-                          discount_amount_excl_tax, uom, line_number, inventory_item, inventory_item_id,
-                          tax_code, item_comment, agreement_item, clave_prod_sat, clave_unidad_sat, clave_impuesto_sat,
-                          tipo_factor_sat, tasaocuota_sat):
-    order_line_inserted = []
+def insert_new_van(table_name, uuid_van, plates_van, economic_number_van, seats_van, status_van):
+    conn = session_to_db()
 
-    order_line_data = {}
+    cursor = conn.cursor()
 
-    cfg = get_config_constant_file()
+    created_at = get_datenow_from_db(conn)
 
-    table_name = cfg['DB_ORACLE_OBJECTS']['ORDER_L']
+    data = (uuid_van, plates_van, economic_number_van, seats_van, created_at, status_van,)
 
-    last_update_date = get_systimestamp_date(session)
-    user_id = cfg['DB_COL_DATA']['USER_ID']
-    user_id_upd = cfg['DB_COL_DATA']['USER_ID']
+    sql_van_insert = 'INSERT INTO {} (uuid_van, plates_van, economic_number_van, seats_van, created_at, status_van) ' \
+                     'VALUES (%s, %s, %s, %s)'.format(table_name)
 
-    # Verifica que el insert de la linea por tu item_guid se haya realizado,
-    # devolviendo un JSON verificador como response
-    # row_exists = exists_data_row(session,
-    #                              table_name,
-    #                              'orderitemguid',
-    #                              'orderid', order_id,
-    #                              'tipo_pedido', tipo_pedido)
+    cursor.execute(sql_van_insert, data)
 
-    row_exists = exists_data_row_item(session,
-                                      table_name,
-                                      'sku',
-                                      'orderid', order_id,
-                                      'tipo_pedido', tipo_pedido,
-                                      'sku', sku)
+    conn.commit()
 
-    if str(order_item_guid) not in str(row_exists):
+    logger.info('Usuario insertado %s', "{0}, User_Name: {1}".format(user_id, user_name))
 
-        new_order_line = OrderDetail(tipo_pedido=tipo_pedido,
-                                     order_id=order_id,
-                                     order_item_guid=order_item_guid,
-                                     product_id=product_id,
-                                     product_name=product_name,
-                                     sku=sku,
-                                     manufacturer_part_number=manufacturer_part_number,
-                                     vendor_id=vendor_id,
-                                     unit_price_incl_tax=unit_price_incl_tax,
-                                     unit_price_excl_tax=unit_price_excltax,
-                                     price_incl_tax=price_incl_tax,
-                                     price_excl_tax=price_excl_tax,
-                                     quantity=quantity,
-                                     discount_amount_incl_tax=discount_amount_incl_tax,
-                                     discount_amount_excl_tax=discount_amount_excl_tax,
-                                     created_by=user_id,
-                                     last_updated_by=user_id_upd,
-                                     uom=uom,
-                                     line_number=line_number,
-                                     inventory_item=inventory_item,
-                                     inventory_item_id=inventory_item_id,
-                                     tax_code=tax_code, 
-                                     item_comment=item_comment,
-                                     agreement_item=agreement_item,
-                                     clave_prod_serv_sat=clave_prod_sat,
-                                     clave_unidad_sat=clave_unidad_sat,
-                                     clave_impuesto_sat=clave_impuesto_sat,
-                                     tipo_factor_sat=tipo_factor_sat,
-                                     tasaocuota_sat=tasaocuota_sat)
+    close_cursor(cursor)
+
+    row_exists = validate_transaction(table_name,
+                                      'uuid_van',
+                                      'uuid_van', uuid_van,
+                                      'plates_van', plates_van,
+                                      'economic_number_van', economic_number_van)
+
+    if str(uuid_van) not in str(row_exists):
 
         session.add(new_order_line)
 
@@ -529,7 +356,7 @@ def update_status_order_item(session, table_name, order_id, order_type, item_sta
 
         if status_item is not None:
 
-            row_exists = exists_data_row_item(session,
+            row_exists = validate_transaction(session,
                                               table_name,
                                               'status',
                                               'orderid', order_id,
@@ -806,6 +633,105 @@ def select_orders_detail(session, order_id, order_type, table_name):
     return data_order_detail
 
 
+def get_order_line_additional_data(session, table_name1, table_name2, tienda_virtual_id, sku):
+
+    order_data_line = {}
+
+    data_lines_order = {}
+
+    try:
+
+        sql_additional_data = ' SELECT si.sku_base, ' \
+                              '        si.numero_articulo_fabricante, ' \
+                              '        si.inventory_item_id, ' \
+                              '        si.primary_uom_code uom, ' \
+                              '        si.tax_code, ' \
+                              '        tvo.vendor_id, ' \
+                              '        claveprodserv, ' \
+                              '        claveunidad, ' \
+                              '        cveimpuesto, ' \
+                              '        tipofactor, ' \
+                              '        tasaocuota, ' \
+                              '        gtin ' \
+                              ' FROM {} si, ' \
+                              '      {} tvo ' \
+                              ' WHERE si.sku = {} ' \
+                              ' AND tvo.tienda_virtual_id = {}'.format(table_name1,
+                                                                       table_name2,
+                                                                       "'" + sku + "'",
+                                                                       tienda_virtual_id)
+
+        data_line = session.execute(sql_additional_data)
+
+        for d_l in data_line:
+            if d_l is not None:
+
+                sku = d_l['sku_base']
+                manufacturer_part_number = d_l['numero_articulo_fabricante']
+                inventory_item_id = d_l['inventory_item_id']
+                unit_of_measure = d_l['uom']
+                tax_code = d_l['tax_code']
+                vendor_id = d_l['vendor_id']
+                claveprod_sat = d_l['claveprodserv']
+                claveunidad_sat = d_l['claveunidad']
+                cveimpuesto_sat = d_l['cveimpuesto']
+                tipofactor_sat = d_l['tipofactor']
+                tasaocuota_sat = d_l['tasaocuota']
+                product_id = d_l['gtin']
+
+                order_data_line = {
+                    "OrderDataLine": {
+                        "Sku": sku,
+                        "ManufacturerPartNumber": manufacturer_part_number,
+                        "InventoryItemId": inventory_item_id,
+                        "UOM": unit_of_measure,
+                        "TaxCode": tax_code,
+                        "VendorId": vendor_id,
+                        "ClaveProducto": claveprod_sat,
+                        "ClaveUnidad": claveunidad_sat,
+                        "ClaveImpuesto": cveimpuesto_sat,
+                        "TipoFactor": tipofactor_sat,
+                        "TasaOCuota": tasaocuota_sat,
+                        "ProductId": product_id
+                    }
+                }
+
+            else:
+                logger.error('Can not read the recordset, beacause is not stored')
+
+                order_data_line = {
+                    "OrderDataLine": {
+                        "Sku": sku,
+                        "ManufacturerPartNumber": ' ',
+                        "InventoryItemId": '0',
+                        "UOM": ' ',
+                        "TaxCode": ' ',
+                        "VendorId": '-1',
+                        "ClaveProducto": ' ',
+                        "ClaveUnidad": ' ',
+                        "ClaveImpuesto": ' ',
+                        "TipoFactor": ' ',
+                        "TasaOCuota": ' ',
+                        "ProductId": ' '
+                    }
+                }
+
+                raise SQLAlchemyError(
+                    "Can\'t read data because it\'s not stored in table {}, SQL Exception".format(table_name1)
+                )
+
+        data_lines_order = json.dumps(order_data_line)
+
+        data_line.close()
+
+    except SQLAlchemyError as sql_exc:
+        logger.exception(sql_exc)
+    # finally:
+    #    session.close()
+
+    return data_lines_order
+
+
 def select_status_order_by_id(session, table_name, order_id, tipo_pedido):
     order_status = []
 
@@ -1054,7 +980,7 @@ def update_user_password_hashed(user_name, password_hash):
 
     conn.commit()
 
-    close_cursor_postgre(cursor)
+    close_cursor(cursor)
 
 
 def insert_user_authenticated(user_id, user_name, user_password, password_hash):
@@ -1079,7 +1005,7 @@ def insert_user_authenticated(user_id, user_name, user_password, password_hash):
 
     logger.info('Usuario insertado %s', "{0}, User_Name: {1}".format(user_id, user_name))
 
-    close_cursor_postgre(cursor)
+    close_cursor(cursor)
 
 
 class UsersAuth(Base):

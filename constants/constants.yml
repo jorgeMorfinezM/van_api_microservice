@@ -11,7 +11,7 @@ DB_RDS:
 
 # DATABASE TABLES NAME
 DB_OBJECTS:
-  ORDER_H: 'van_vehicle'
+  VAN_TABLE: 'van_vehicle'
 
 DB_AUTH_OBJECT:
   USERS_AUTH: 'user_auth_api'
