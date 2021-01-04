@@ -1,0 +1,3 @@
+Documentación de diseño de la API:
+
+https://docs.google.com/document/d/1jqFjaR2Smugrj3xpH93IHH3TKqPRt9mEUJT3AA30BCQ/edit?usp=sharing
