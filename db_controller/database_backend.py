@@ -146,25 +146,50 @@ def get_systimestamp_date(session):
 
 
 def get_datenow_from_db(conn):
+
+    cursor = None
     last_updated_date = None
+    sql_nowdate = ''
 
-    sql_nowdate = 'SELECT now()'
+    try:
 
-    cursor = create_cursor(conn)
+        sql_nowdate = 'SELECT now()'
 
-    cursor.execute(sql_nowdate)
+        cursor = create_cursor(conn)
 
-    result = cursor.fetchall()
+        cursor.execute(sql_nowdate)
 
-    if result is not None:
-        last_updated_date = result
+        result = cursor.fetchall()
 
-    cursor.close()
+        if result is not None:
+            last_updated_date = result
+
+        cursor.close()
+
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database.".format(error)
+        )
+    finally:
+        disconnect_from_db(conn)
 
     return last_updated_date
 
 
 def exists_data_row(table_name, column_name, column_filter1, value1, column_filter2, value2):
+    r"""
+    Transaction that validates the existence and searches for a certain record in the database.
+
+    :param table_name: The table name to looking for data van.
+    :param column_name: The name of the column to find existence.
+    :param column_filter1: The name of the first column filter to looking for data.
+    :param value1: The value of the first filter to looking for data.
+    :param column_filter2: The name of the next column filter to looking for data.
+    :param value2: The value of the next filter to looking for data.
+    :return row_data: The data if row exists.
+    """
 
     conn = None
     cursor = None
@@ -179,7 +204,7 @@ def exists_data_row(table_name, column_name, column_filter1, value1, column_filt
 
         cursor.execute(sql_exists)
 
-        row_exists = cursor.fetchone()[0]
+        row_exists = cursor.fetchall()
 
         # row_exists = session.execute(sql_exists)
 
@@ -198,7 +223,10 @@ def exists_data_row(table_name, column_name, column_filter1, value1, column_filt
 
     except SQLAlchemyError as error:
         conn.rollback()
-        logger.exception('An exception was occurred while execute transaction: %s', error)
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database on table {}.".format(error, table_name)
+        )
     finally:
         disconnect_from_db(conn)
 
@@ -210,6 +238,20 @@ def validate_transaction(table_name,
                          column_filter1, value1,
                          column_filter2, value2,
                          column_filter3, value3):
+    r"""
+    Transaction that validates the existence and searches for a certain record in the database.
+
+    :param table_name: The table name to looking for data van.
+    :param column_name: The name of the column to find existence.
+    :param column_filter1: The name of the first column filter to looking for data.
+    :param value1: The value of the first filter to looking for data.
+    :param column_filter2: The name of the next column filter to looking for data.
+    :param value2: The value of the next filter to looking for data.
+    :param column_filter3: The name of the next column filter to looking for data.
+    :param value3: The value of the next filter to looking for data.
+    :return row_data: The data if row exists.
+    """
+
     conn = None
     cursor = None
     row_data = None
@@ -225,7 +267,7 @@ def validate_transaction(table_name,
 
         cursor.execute(sql_exists)
 
-        row_exists = cursor.fetchone()
+        row_exists = cursor.fetchall()
 
         for r_e in row_exists:
 
@@ -240,7 +282,10 @@ def validate_transaction(table_name,
 
     except SQLAlchemyError as error:
         conn.rollback()
-        logger.exception('An exception was occurred while execute transaction: %s', error)
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database on table {}.".format(error, table_name)
+        )
     finally:
         disconnect_from_db(conn)
 
@@ -248,6 +293,14 @@ def validate_transaction(table_name,
 
 
 class UrbvanModelDb(Base):
+
+    r"""
+    Class to instance the data of a Van on the database.
+    Transactions:
+     - Insert: Add Van data to the database if not exists.
+     - Update: Update Van data on the database if exists.
+    """
+
     cfg = get_config_constant_file()
 
     __tablename__ = cfg['DB_OBJECTS']['VAN_TABLE']
@@ -259,7 +312,7 @@ class UrbvanModelDb(Base):
     created_at = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['CREATED_AT'], String)
     status_van = Column(cfg['DB_COLUMNS_DATA']['VAN_VEHICLE']['STATUS_VAN'], String)
 
-    def manage_van_vehicle_data(self, uuid_van, plates_van, economic_number_van, seats_van, created_at, status_van):
+    def manage_van_vehicle_data(self, uuid_van, plates_van, economic_number_van, seats_van, status_van):
 
         van_data = {}
 
@@ -289,7 +342,20 @@ class UrbvanModelDb(Base):
         return van_data
 
 
+# Add Van data to insert the row on the database
 def insert_new_van(table_name, uuid_van, plates_van, economic_number_van, seats_van, status_van):
+    r"""
+    Transaction to add data of a Van and inserted on database.
+    The data that you can insert are:
+
+    :param table_name: The table name to looking for data van.
+    :param uuid_van: UUID to identify the Van registered.
+    :param plates_van: Plates of a Van.
+    :param economic_number_van: Economic number of a Van.
+    :param seats_van: Number of seats of the Van.
+    :param status_van: Status of the Van
+    :return van_data_inserted: Dictionary that contains Van data inserted on db.
+    """
 
     conn = None
     cursor = None
@@ -354,17 +420,33 @@ def insert_new_van(table_name, uuid_van, plates_van, economic_number_van, seats_
     except SQLAlchemyError as error:
         conn.rollback()
         logger.exception('An exception was occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database on table {}.".format(error, table_name)
+        )
     finally:
         disconnect_from_db(conn)
 
     return json.dumps(van_data_inserted)
 
 
+# Update van data registered
 def update_van_data(table_name, uuid_van, plates_van, economic_number_van, seats_van, status_van):
+    r"""
+    Transaction to update data of a Van registered on database.
+    The data that you can update are:
+
+    :param table_name: The table name to looking for data van.
+    :param uuid_van: Can not update an UUID of a van, but use it to looking for and update it.
+    :param plates_van: Plates of a van to update.
+    :param economic_number_van: Economic number of a van to update.
+    :param seats_van: Number of seats of a van to update.
+    :param status_van: Status of a van to update.
+    :return van_data_updated: Dictionary that contains Van data updated on db.
+    """
 
     conn = None
     cursor = None
-    van_data_inserted = dict()
+    van_data_updated = dict()
 
     try:
         conn = session_to_db()
@@ -391,7 +473,7 @@ def update_van_data(table_name, uuid_van, plates_van, economic_number_van, seats
 
         if str(status_van) in str(row_exists):
 
-            van_data_inserted = {
+            van_data_updated = {
                 "UUID": uuid_van,
                 "Plate": plates_van,
                 "EconomicNumber": economic_number_van,
@@ -403,7 +485,7 @@ def update_van_data(table_name, uuid_van, plates_van, economic_number_van, seats
 
         else:
 
-            van_data_inserted = {
+            van_data_updated = {
                 "UUID": uuid_van,
                 "Plate": plates_van,
                 "EconomicNumber": economic_number_van,
@@ -413,633 +495,306 @@ def update_van_data(table_name, uuid_van, plates_van, economic_number_van, seats
                 "Message": "Van not updated",
             }
 
-            logger.error('Can not read the recordset, beacause is not stored')
+            logger.error('Can not read the recordset: {}, beacause is not stored on table: {}'.format(status_van,
+                                                                                                      table_name))
             raise SQLAlchemyError(
                 "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
             )
 
     except SQLAlchemyError as error:
         conn.rollback()
-        logger.exception('An exception was occurred while execute transaction: %s', error)
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database on table {}.".format(error, table_name)
+        )
     finally:
         disconnect_from_db(conn)
 
-    return json.dumps(van_data_inserted)
+    return json.dumps(van_data_updated)
 
 
-def delete_van_data():
+# Delete van registered by uuid and plates
+def delete_van_data(table_name, uuid_van, plate_van):
+    r"""
+    Transaction to delete a Van data registered on database from his uuid and plates.
 
-    "DELETE FROM urbvan.van_vehicle WHERE uuid_van=? AND plates_van=''"
+    :param table_name: The table name to looking for data van.
+    :param uuid_van: Id to looking for a Van data to delete.
+    :param plate_van: Plates to looking for a Van data to delete.
+    :return van_data_delete: Dictionary contains Van data deleted.
+    """
 
-
-def select_orders_header_cnc(session, table_name):
-    # table_name = tv_orders_h
-
-    order_headers = []
-
-    data_orders_header = {}
-
-    try:
-        sql_head = " SELECT " \
-                   "    orderid order_id," \
-                   "    upper(vatnumber) rfc_cliente, " \
-                   "    upper(billingfirstname) ||' '|| upper(BILLINGLASTNAME) nombre_cliente, " \
-                   "    customer_number numero_cliente, " \
-                   "    upper(BILLINGADDRESS1)||' '||upper(BILLINGADDRESS2) domicilio, " \
-                   "    BILLINGENTRECALLES as domicilio_entrecalles, " \
-                   "    BILLINGGNUMEROEXTERIOR as domicilio_numero_exterior, " \
-                   "    upper(billingcity) ciudad, " \
-                   "    upper(BILLINGSTATEPROVINCENAME) estado, " \
-                   "    BILLINGZIPPOSTALCODE codigo_postal, " \
-                   "    upper(BILLINGCOUNTRYNAME) pais, " \
-                   "    BILLINGPHONENUMBER telefono_cliente, " \
-                   "    BILLINGEMAIL correo_cliente, " \
-                   "    '$ ' || (ordertotal - ordertax) || ' ' || customercurrencycode subtotal, " \
-                   "    '$ ' || ordertax || ' ' || customercurrencycode impuesto_order, " \
-                   "    '$ ' || ordertotal || ' ' || customercurrencycode total_order, " \
-                   "    PAYMENTMETHODSYSTEMNAME forma_pago_order, " \
-                   "    SHIPPINGMETHOD metodo_compra, " \
-                   "    CREATEDONUTC fecha_order " \
-                   " FROM {} " \
-                   " WHERE status = 'PROCESO' " \
-                   " AND PICKUPINSTORE = 'True' ".format(table_name)
-
-        orders_header = session.execute(sql_head)
-
-        for o_h in orders_header:
-            if o_h is not None:
-
-                print('Orders ClickNCollect: ', o_h)
-
-                order_id = o_h['order_id']
-                rfc_cliente = o_h['rfc_cliente']
-                nombre_cliente = o_h['nombre_cliente']
-                numero_cliente = o_h['numero_cliente']
-                domicilio_cliente = o_h['domicilio']
-                domicilio_entrecalles = o_h['domicilio_entrecalles']
-                domicilio_numero_exterior = o_h['domicilio_numero_exterior']
-                ciudad_cliente = o_h['ciudad']
-                estado_cliente = o_h['estado']
-                codigo_postal = o_h['codigo_postal']
-                pais = o_h['pais']
-                telefono_cliente = o_h['telefono_cliente']
-                correo_cliente = o_h['correo_cliente']
-                subtotal_pedido = o_h['subtotal']
-                impuesto_pedido = o_h['impuesto_order']
-                total_pedido = o_h['total_order']
-                forma_pago_pedido = o_h['forma_pago_order']
-                metodo_compra_pedido = o_h['metodo_compra']
-                fecha_pedido = datetime.strptime(str(o_h['fecha_order']), "%Y-%m-%d %H:%M:%S")
-
-                logger.info('Header Pedido: %s', 'OrderId: {}, '
-                                                 'Nombre cliente: {}, '
-                                                 'Domicilio: {}, '
-                                                 'Telefono: {}, '
-                                                 'Email: {}, '
-                                                 'Importe pedido: {}, '
-                                                 'Impuesto pedido: {}, '
-                                                 'Total pedido: {},'
-                                                 'Forma de pago: {}, '
-                                                 'Metodo de pago: {}, '
-                                                 'Fecha pedido: {}'.format(order_id,
-                                                                           nombre_cliente,
-                                                                           domicilio_cliente + ', ' + ciudad_cliente +
-                                                                           ' ' + estado_cliente + ', ' +
-                                                                           'C.P. ' + codigo_postal + ', ' + pais,
-                                                                           telefono_cliente, correo_cliente,
-                                                                           subtotal_pedido, impuesto_pedido,
-                                                                           total_pedido, forma_pago_pedido,
-                                                                           metodo_compra_pedido, fecha_pedido
-                                                                           ))
-
-                order_headers += [{
-                    "OrderHeader": {
-                        "OrderId": order_id,
-                        "RfcCliente": rfc_cliente,
-                        "NombreCliente": nombre_cliente,
-                        "NumeroCliente": numero_cliente,
-                        "Domicilio": domicilio_cliente,
-                        "EntreCalles": domicilio_entrecalles,
-                        "NumeroExterior": domicilio_numero_exterior,
-                        "Ciudad": ciudad_cliente,
-                        "Estado": estado_cliente,
-                        "CodigoPostal": codigo_postal,
-                        "Pais": pais,
-                        "TelefonoCliente": telefono_cliente,
-                        "EmailCliente": correo_cliente,
-                        "ImportePedido": subtotal_pedido,
-                        "ImpuestoPedido": impuesto_pedido,
-                        "TotalPedido": total_pedido,
-                        "FormaPago": forma_pago_pedido,
-                        "MetodoPago": metodo_compra_pedido,
-                        "FechaPedido": str(fecha_pedido)
-                    }
-                }]
-
-            else:
-                logger.error('Can not read the recordset, beacause is not stored')
-                raise SQLAlchemyError(
-                    "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
-                )
-
-        data_orders_header = json.dumps(order_headers)
-
-        orders_header.close()
-
-    except SQLAlchemyError as sql_exc:
-        logger.exception(sql_exc)
-    # finally:
-    #    session.close()
-
-    return data_orders_header
-
-
-def select_orders_detail(session, order_id, order_type, table_name):
-    # table_name = tv_orders_l
-
-    order_detail_data = []
-
-    data_order_detail = {}
+    conn = None
+    cursor = None
+    van_data_deleted = dict()
 
     try:
+        conn = session_to_db()
 
-        total_pedido = 0
+        cursor = conn.cursor()
 
-        sql_detail = " SELECT tipo_pedido, orderid order_id, line_number, orderitemguid, productname nombre_producto," \
-                     "        quantity cantidad_producto, sku, manufacturerpartnumber codigo_fabricante, " \
-                     "        vendorid vendor_id, unitpriceincltax importe_total_producto, " \
-                     "        unitpriceexcltax subtotal_producto, priceincltax total_item_order, " \
-                     "        (unitpriceincltax - unitpriceexcltax) impuesto_producto," \
-                     "        priceexcltax subtotal_item_order, uom unidad_medida, inventory_item_id, tax_code, " \
-                     "        CLAVEPRODSERV clave_prod_sat, claveunidad clave_unidad_sat, " \
-                     "        CLAVEIMPUESTO clave_impuesto_sat, tipofactor tipo_factor_sat, organization_id " \
-                     " FROM {} " \
-                     " WHERE orderid = {} " \
-                     " AND tipo_pedido = {} " \
-                     " ORDER BY orderid, line_number ASC".format(table_name, str(order_id), "'" + order_type + "'")
+        # delete row to database
+        sql_delete_van = "DELETE FROM {} WHERE uuid_van=%s AND plates_van=%s".format(table_name)
 
-        orders_detail = session.execute(sql_detail)
+        cursor.execute(sql_delete_van, (uuid_van, plate_van,))
 
-        for o_l in orders_detail:
-            if o_l is not None:
+        conn.commit()
 
-                tipo_pedido = o_l['tipo_pedido']
-                order_id = o_l['order_id']
-                line_number = o_l['line_number']
-                order_item_guid = o_l['orderitemguid']
-                nombre_producto = o_l['nombre_producto']
-                cantidad_producto = o_l['cantidad_producto']
-                sku = o_l['sku']
-                codigo_fabricante = o_l['codigo_fabricante']
-                vendor_id = o_l['vendor_id']
-                importe_total_producto = str(o_l['importe_total_producto'])
-                subtotal_producto = str(o_l['subtotal_producto'])
-                importe_producto = str(o_l['impuesto_producto'])
-                total_item_order = str(o_l['total_item_order'])
-                subtotal_item_order = str(o_l['subtotal_item_order'])
-                unidad_medida = o_l['unidad_medida']
-                item_id = o_l['inventory_item_id']
-                codigo_impuesto = o_l['tax_code']
-                clave_prod_sat = o_l['clave_prod_sat']
-                clave_unidad_sat = o_l['clave_unidad_sat']
-                clave_impuesto_sat = o_l['clave_impuesto_sat']
-                tipo_factor_sat = o_l['tipo_factor_sat']
-                organization_id = o_l['organization_id']
+        close_cursor(cursor)
 
-                total_pedido += total_item_order
+        van_data_deleted = {
+            "UUID": uuid_van,
+            "Plate": plate_van,
+            "Message": "Van Deleted Successful",
+        }
 
-                logger.info('Cantidad Producto: {}, '
-                            'SKU: {}, '
-                            'Nombre Producto: {}, '
-                            'Codigo Fabricante: {}, '
-                            'Unidad medida: {}, '
-                            'Importe partidas: {}, '
-                            'Total partidas: {}, '
-                            'Total: {}'.format(cantidad_producto, sku, nombre_producto, codigo_fabricante,
-                                               unidad_medida,
-                                               subtotal_item_order, total_item_order, total_pedido))
+        row_exists = exists_data_row(table_name,
+                                     'uuid_van',
+                                     'uuid_van', uuid_van,
+                                     'plates_van', plate_van)
 
-                order_detail_data += [{
-                    "OrderDetail": {
-                        "TipoPedido": tipo_pedido,
-                        "OrderId": order_id,
-                        "LineNumber": line_number,
-                        "OorderItemGUId": order_item_guid,
-                        "NombreProducto": nombre_producto,
-                        "CantidadProducto": cantidad_producto,
-                        "SKU": sku,
-                        "CodigoFabricante": codigo_fabricante,
-                        "VendorId": vendor_id,
-                        "ImporteTotalProducto": str(importe_total_producto),
-                        "SubtotalProducto": str(subtotal_producto),
-                        "ImpuestoProducto": str(importe_producto),
-                        "TotalItemOrder": str(total_item_order),
-                        "SubtotalItemOrder": str(subtotal_item_order),
-                        "UnidadMedida": unidad_medida,
-                        "InventoryItemId": item_id,
-                        "CodigoImpuesto": codigo_impuesto,
-                        "ClaveProdSAT": clave_prod_sat,
-                        "ClaveUnidadSAT": clave_unidad_sat,
-                        "ClaveImpuestoSAT": clave_impuesto_sat,
-                        "TipoFactorSAT": tipo_factor_sat,
-                        "OrganizationId": organization_id
-                    }
-                }]
+        if str(uuid_van) in str(row_exists):
 
-            else:
-                logger.error('Can not read the recordset, beacause is not stored')
-                raise SQLAlchemyError(
-                    "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
-                )
-
-        data_order_detail = json.dumps(order_detail_data)
-
-        orders_detail.close()
-
-    except SQLAlchemyError as sql_exc:
-        logger.exception(sql_exc)
-    finally:
-        session.close()
-
-    return data_order_detail
-
-
-def get_order_line_additional_data(session, table_name1, table_name2, tienda_virtual_id, sku):
-
-    order_data_line = {}
-
-    data_lines_order = {}
-
-    try:
-
-        sql_additional_data = ' SELECT si.sku_base, ' \
-                              '        si.numero_articulo_fabricante, ' \
-                              '        si.inventory_item_id, ' \
-                              '        si.primary_uom_code uom, ' \
-                              '        si.tax_code, ' \
-                              '        tvo.vendor_id, ' \
-                              '        claveprodserv, ' \
-                              '        claveunidad, ' \
-                              '        cveimpuesto, ' \
-                              '        tipofactor, ' \
-                              '        tasaocuota, ' \
-                              '        gtin ' \
-                              ' FROM {} si, ' \
-                              '      {} tvo ' \
-                              ' WHERE si.sku = {} ' \
-                              ' AND tvo.tienda_virtual_id = {}'.format(table_name1,
-                                                                       table_name2,
-                                                                       "'" + sku + "'",
-                                                                       tienda_virtual_id)
-
-        data_line = session.execute(sql_additional_data)
-
-        for d_l in data_line:
-            if d_l is not None:
-
-                sku = d_l['sku_base']
-                manufacturer_part_number = d_l['numero_articulo_fabricante']
-                inventory_item_id = d_l['inventory_item_id']
-                unit_of_measure = d_l['uom']
-                tax_code = d_l['tax_code']
-                vendor_id = d_l['vendor_id']
-                claveprod_sat = d_l['claveprodserv']
-                claveunidad_sat = d_l['claveunidad']
-                cveimpuesto_sat = d_l['cveimpuesto']
-                tipofactor_sat = d_l['tipofactor']
-                tasaocuota_sat = d_l['tasaocuota']
-                product_id = d_l['gtin']
-
-                order_data_line = {
-                    "OrderDataLine": {
-                        "Sku": sku,
-                        "ManufacturerPartNumber": manufacturer_part_number,
-                        "InventoryItemId": inventory_item_id,
-                        "UOM": unit_of_measure,
-                        "TaxCode": tax_code,
-                        "VendorId": vendor_id,
-                        "ClaveProducto": claveprod_sat,
-                        "ClaveUnidad": claveunidad_sat,
-                        "ClaveImpuesto": cveimpuesto_sat,
-                        "TipoFactor": tipofactor_sat,
-                        "TasaOCuota": tasaocuota_sat,
-                        "ProductId": product_id
-                    }
-                }
-
-            else:
-                logger.error('Can not read the recordset, beacause is not stored')
-
-                order_data_line = {
-                    "OrderDataLine": {
-                        "Sku": sku,
-                        "ManufacturerPartNumber": ' ',
-                        "InventoryItemId": '0',
-                        "UOM": ' ',
-                        "TaxCode": ' ',
-                        "VendorId": '-1',
-                        "ClaveProducto": ' ',
-                        "ClaveUnidad": ' ',
-                        "ClaveImpuesto": ' ',
-                        "TipoFactor": ' ',
-                        "TasaOCuota": ' ',
-                        "ProductId": ' '
-                    }
-                }
-
-                raise SQLAlchemyError(
-                    "Can\'t read data because it\'s not stored in table {}, SQL Exception".format(table_name1)
-                )
-
-        data_lines_order = json.dumps(order_data_line)
-
-        data_line.close()
-
-    except SQLAlchemyError as sql_exc:
-        logger.exception(sql_exc)
-    # finally:
-    #    session.close()
-
-    return data_lines_order
-
-
-def select_status_order_by_id(session, table_name, order_id, tipo_pedido):
-    order_status = []
-
-    order_status_data = {}
-
-    try:
-        sql_status_order = " SELECT status" \
-                           " FROM {} " \
-                           " WHERE tipo_pedido = {} " \
-                           " AND orderid = {} ".format(table_name, "'" + tipo_pedido + "'", order_id)
-
-        status_order = session.execute(sql_status_order)
-
-        order_status = [{
-            "OrderId": order_id,
-            "StatusPedido": "SIN ESTATUS",
-            "TipoPedido": tipo_pedido
-        }]
-
-        for o_s in status_order:
-            if o_s is not None:
-
-                status_pedido = o_s['status']
-
-                order_status = [{
-                    "OrderId": order_id,
-                    "StatusPedido": status_pedido,
-                    "TipoPedido": tipo_pedido
-                }]
-
-            else:
-
-                order_status = [{
-                    "OrderId": order_id,
-                    "StatusPedido": "SIN ESTATUS",
-                    "TipoPedido": tipo_pedido
-                }]
-
-                logger.error('Can not read the recordset, beacause is not stored')
-                raise SQLAlchemyError(
-                    "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
-                )
-
-        order_status_data = json.dumps(order_status)
-
-        status_order.close()
-
-    except SQLAlchemyError as sql_exec:
-        order_status = [{
-            "OrderId": order_id,
-            "StatusPedido": "SIN ESTATUS",
-            "TipoPedido": tipo_pedido
-        }]
-        logger.exception(sql_exec)
-    finally:
-        session.close()
-
-    return order_status_data
-
-
-def update_status_order_by_id(session, table_name, order_id, order_type, order_status):
-    order_status_updated = []
-
-    order_status_data = {}
-
-    try:
-        sql_status_order = " UPDATE {} " \
-                           " SET status = {} " \
-                           " WHERE orderid = {} " \
-                           " AND   tipo_pedido = {} ".format(table_name,
-                                                             "'" + order_status + "'",
-                                                             order_id,
-                                                             "'" + order_type + "'")
-
-        status_order = session.execute(sql_status_order)
-
-        if status_order is not None:
-
-            row_exists = exists_data_row(session,
-                                         table_name,
-                                         'status',
-                                         'orderid', order_id,
-                                         'tipo_pedido', order_type)
-
-            if str(order_status) in str(row_exists):
-                order_status_updated += [{
-                    "OrderId": order_id,
-                    "StatusOK": 'OK',
-                    "TipoPedido": order_type
-                }]
+            van_data_deleted = {
+                "UUID": uuid_van,
+                "Plate": plate_van,
+                "Message": "Van not deleted",
+            }
 
         else:
 
-            order_status_updated += [{
-                "OrderId": order_id,
-                "StatusOK": 'FAIL',
-                "TipoPedido": order_type
-            }]
-
-            logger.error('Can not read the recordset, beacause is not stored')
-            raise SQLAlchemyError(
-                "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
+            logger.error('Can not read the recordset: {}, because is not stored on table: {}'.format(uuid_van,
+                                                                                                     table_name))
+            raise mvc_exc.ItemNotStored(
+                'Can\'t read "{}" because it\'s not stored in table "{}. SQL Exception"'.format(
+                    uuid_van, table_name
+                )
             )
 
-        order_status_data = json.dumps(order_status_updated)
-
-        session.commit()
-
-        status_order.close()
-
-    except SQLAlchemyError as sql_exec:
-        logger.exception(sql_exec)
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database on table {}.".format(error, table_name)
+        )
     finally:
-        session.close()
+        disconnect_from_db(conn)
 
-    return order_status_data
+    return json.dumps(van_data_deleted)
 
 
-def select_integracion_id_by_vendor_id(session, vendor_id):
-    cfg = get_config_constant_file()
+# Select all data van by uuid from db
+def select_van_by_uuid(table_name, uuid_van):
+    r"""
+    Get all the Van's data looking for specific status on database.
 
-    __tablename__ = cfg['DB_ORACLE_OBJECTS']['TV_INTEGRACIONES_OFIX']
+    :param table_name: The table name to looking for data van.
+    :param uuid_van: Id to looking for a Van data.
+    :return data_van_by_uuid: Dictionary that contains all the Van's data by specific UUID.
+    """
 
-    # columns names
+    conn = None
+    cursor = None
 
-    integracion_id = cfg['DB_COLUMNS_DATA']['TV_INTEGRACIONES']['INTEGRACION_ID']
-    integracion_name = cfg['DB_COLUMNS_DATA']['TV_INTEGRACIONES']['INTEGRACION_NAME']
-    status = cfg['DB_COLUMNS_DATA']['TV_INTEGRACIONES']['STATUS']
-    vendorid = cfg['DB_COLUMNS_DATA']['TV_INTEGRACIONES']['VENDOR_ID']
-    tienda_virtual_id = cfg['DB_COLUMNS_DATA']['TV_INTEGRACIONES']['TIENDA_VIRTUAL_ID']
-    inventario_minimo = cfg['DB_COLUMNS_DATA']['TV_INTEGRACIONES']['INVENTARIO_MINIMO']
-    precio_minimo_venta = cfg['DB_COLUMNS_DATA']['TV_INTEGRACIONES']['PRECIO_MINIMO_VENTA']
-
-    integracion_data = []
-
-    integraciones = {}
+    van_data_by_id = []
+    data_van_all = dict()
 
     try:
-        sql_integracion_data = " SELECT " \
-                               "     {}, " \
-                               "     {} AS integracion_name, " \
-                               "     {}, " \
-                               "     {}, " \
-                               "     {}, " \
-                               "     {}, " \
-                               "     {} " \
-                               " FROM {} " \
-                               " WHERE {} = {} " \
-                               "AND status = 'ACTIVO'".format(integracion_id,
-                                                              integracion_name,
-                                                              status,
-                                                              vendorid,
-                                                              tienda_virtual_id,
-                                                              inventario_minimo,
-                                                              precio_minimo_venta,
-                                                              __tablename__,
-                                                              vendorid,
-                                                              vendor_id)
 
-        integracion_db = session.execute(sql_integracion_data)
+        conn = session_to_db()
 
-        integracion_data = [{
-            "IntegracionId": -1,
-            "IntegracionName": "null",
-            "StatusIntegracion": "null",
-            "VendorId": vendor_id,
-            "TiendaVirtualId": "0",
-            "InventarioMinimo": 0,
-            "PrecioMinimoVenta": 0
-        }]
+        cursor = conn.cursor()
 
-        for integracion in integracion_db:
-            if integracion is not None:
+        sql_van_by_id = " SELECT uuid_van, " \
+                        "        plates_van, " \
+                        "        economic_number_van, " \
+                        "        seats_van, " \
+                        "        created_at, " \
+                        "        status_van, " \
+                        "        last_update_date " \
+                        " FROM {} " \
+                        " WHERE uuid_van = %s".format(table_name)
 
-                r_integracion_id = integracion['integracion_id']
-                r_integracion_name = integracion['integracion_name']
-                r_status_integracion = integracion['status']
-                r_vendor_id = integracion['vendorid']
-                r_tienda_virtual_id = integracion['tienda_virtual_id']
-                r_inventario_minimo = integracion['inventario_minimo']
-                r_precio_minimo_venta = integracion['precio_minimo_venta']
+        cursor.execute(sql_van_by_id, (uuid_van,))
 
-                integracion_data = [{
-                    "IntegracionId": r_integracion_id,
-                    "IntegracionName": r_integracion_name,
-                    "StatusIntegracion": r_status_integracion,
-                    "VendorId": r_vendor_id,
-                    "TiendaVirtualId": r_tienda_virtual_id,
-                    "InventarioMinimo": r_inventario_minimo,
-                    "PrecioMinimoVenta": r_precio_minimo_venta
-                }]
+        result = cursor.fetchall()
 
-            else:
-                logger.error('Can not read the recordset, beacause is not stored')
-                raise SQLAlchemyError(
-                    "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(__tablename__)
+        if result is not None:
+            for van_data in result:
+                if van_data is not None:
+
+                    uuid_van = van_data['uuid_van']
+                    plates_van = van_data['plates_van']
+                    economic_number = van_data['economic_number_van']
+                    seats_van = van_data['seats_van']
+                    fecha_creacion = datetime.strptime(str(van_data['created_at']), "%Y-%m-%d %H:%M:%S")
+                    status_van = van_data['status_van']
+                    fecha_actualizacion = datetime.strptime(str(van_data['last_update_date']), "%Y-%m-%d %H:%M:%S")
+
+                    logger.info('Van Registered: %s', 'VanUUId: {}, '
+                                                      'VanPlates: {}, '
+                                                      'VanEconomicNumber: {}, '
+                                                      'VanSeats: {}, '
+                                                      'VanStatus: {}, '
+                                                      'VanCreatedAt: {} '.format(uuid_van,
+                                                                                 plates_van,
+                                                                                 economic_number,
+                                                                                 seats_van,
+                                                                                 status_van,
+                                                                                 fecha_creacion))
+
+                    van_data_by_id += [{
+                        "VanVehicle": {
+                            "UUID": uuid_van,
+                            "Plate": plates_van,
+                            "EconomicNumber": economic_number,
+                            "SeatsNumber": seats_van,
+                            "Status": status_van,
+                            "CreationDate": fecha_creacion,
+                            "LastUpdateDate": fecha_actualizacion,
+                        }
+                    }]
+
+                else:
+                    logger.error('Can not read the recordset: {}, '
+                                 'beacause is not stored on table: {}'.format(uuid_van, table_name))
+                    raise SQLAlchemyError(
+                        "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
+                    )
+        else:
+            logger.error('Can not read the recordset, because is not stored: %s', uuid_van)
+            raise mvc_exc.ItemNotStored(
+                'Can\'t read "{}" because it\'s not stored in table "{}. SQL Exception"'.format(
+                    uuid_van, table_name
                 )
+            )
 
-        integraciones = json.dumps(integracion_data)
+        close_cursor(cursor)
 
-        integracion_db.close()
+        data_van_all = json.dumps(van_data_by_id)
 
-    except SQLAlchemyError as sql_exec:
-        logger.exception(sql_exec)
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database on table {}.".format(error, table_name)
+        )
     finally:
-        session.close()
+        disconnect_from_db(conn)
 
-    return integraciones
-
-
-def validate_user_exists(user_name):
-    cfg = get_config_constant_file()
-
-    conn = session_to_db()
-
-    cursor = conn.cursor()
-
-    table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
-
-    sql_check = "SELECT EXISTS(SELECT 1 FROM {} WHERE user_name = {} LIMIT 1)".format(table_name, "'" + user_name + "'")
-
-    cursor.execute(sql_check)
-
-    result = cursor.fetchone()
-
-    return result
+    return data_van_all
 
 
-def update_user_password_hashed(user_name, password_hash):
-    cfg = get_config_constant_file()
+# Select all data van by status from db
+def select_van_by_status(table_name, status_van):
+    r"""
+    Get all the Van's data looking for specific status on database.
 
-    conn = session_to_db()
+    :param table_name: The table name to looking for data van.
+    :param status_van: Status to looking for a Van data.
+    :return data_van_by_status: Dictionary that contains all the Van's data by specific status.
+    """
 
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    last_update_date = get_datenow_from_db(conn)
+    van_data_by_status = []
+    data_van_all = dict()
 
-    table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
+    try:
 
-    # update row to database
-    sql_update_user = "UPDATE {} SET password_hash = %s, last_update_date = NOW() WHERE user_name = %s".format(
-        table_name
-    )
+        conn = session_to_db()
 
-    cursor.execute(sql_update_user, (password_hash, user_name,))
+        cursor = conn.cursor()
 
-    conn.commit()
+        sql_van_by_id = " SELECT uuid_van, " \
+                        "        plates_van, " \
+                        "        economic_number_van, " \
+                        "        seats_van, " \
+                        "        created_at, " \
+                        "        status_van, " \
+                        "        last_update_date " \
+                        " FROM {} " \
+                        " WHERE status_van = %s".format(table_name)
 
-    close_cursor(cursor)
+        cursor.execute(sql_van_by_id, (status_van,))
 
+        result = cursor.fetchall()
 
-def insert_user_authenticated(user_id, user_name, user_password, password_hash):
-    cfg = get_config_constant_file()
+        if result is not None:
+            for van_data in result:
+                if van_data is not None:
 
-    conn = session_to_db()
+                    uuid_van = van_data['uuid_van']
+                    plates_van = van_data['plates_van']
+                    economic_number = van_data['economic_number_van']
+                    seats_van = van_data['seats_van']
+                    fecha_creacion = datetime.strptime(str(van_data['created_at']), "%Y-%m-%d %H:%M:%S")
+                    status_van = van_data['status_van']
+                    fecha_actualizacion = datetime.strptime(str(van_data['last_update_date']), "%Y-%m-%d %H:%M:%S")
 
-    cursor = conn.cursor()
+                    logger.info('Van Registered: %s', 'VanUUId: {}, '
+                                                      'VanPlates: {}, '
+                                                      'VanEconomicNumber: {}, '
+                                                      'VanSeats: {}, '
+                                                      'VanStatus: {}, '
+                                                      'VanCreatedAt: {} '.format(uuid_van,
+                                                                                 plates_van,
+                                                                                 economic_number,
+                                                                                 seats_van,
+                                                                                 status_van,
+                                                                                 fecha_creacion))
 
-    last_update_date = get_datenow_from_db(conn)
+                    van_data_by_status += [{
+                        "VanVehicle": {
+                            "UUID": uuid_van,
+                            "Plate": plates_van,
+                            "EconomicNumber": economic_number,
+                            "SeatsNumber": seats_van,
+                            "Status": status_van,
+                            "CreationDate": fecha_creacion,
+                            "LastUpdateDate": fecha_actualizacion,
+                        }
+                    }]
 
-    table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
+                else:
+                    logger.error('Can not read the recordset: {}, '
+                                 'beacause is not stored on table: {}'.format(status_van, table_name))
+                    raise SQLAlchemyError(
+                        "Can\'t read data because it\'s not stored in table {}. SQL Exception".format(table_name)
+                    )
+        else:
+            logger.error('Can not read the recordset, because is not stored: %s', status_van)
+            raise mvc_exc.ItemNotStored(
+                'Can\'t read "{}" because it\'s not stored in table "{}. SQL Exception"'.format(
+                    status_van, table_name
+                )
+            )
 
-    data = (user_id, user_name, user_password, password_hash,)
+        close_cursor(cursor)
 
-    sql_user_insert = 'INSERT INTO {} (user_id, user_name, user_password, password_hash) ' \
-                      'VALUES (%s, %s, %s, %s)'.format(table_name)
+        data_van_all = json.dumps(van_data_by_status)
 
-    cursor.execute(sql_user_insert, data)
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database on table {}.".format(error, table_name)
+        )
+    finally:
+        disconnect_from_db(conn)
 
-    conn.commit()
-
-    logger.info('Usuario insertado %s', "{0}, User_Name: {1}".format(user_id, user_name))
-
-    close_cursor(cursor)
+    return data_van_all
 
 
 class UsersAuth(Base):
+    r"""
+    Class to instance User data to authenticate the API.
+    Transactions:
+     - Insert: Add user data to the database if not exists.
+     - Update: Update user data on the database if exists.
+    """
+
     cfg = get_config_constant_file()
 
     __tablename__ = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
@@ -1083,6 +838,98 @@ class UsersAuth(Base):
             )
 
 
+# Transaction to looking for a user on db to authenticate
+def validate_user_exists(user_name):
+    r"""
+    Looking for a user by name on the database to valid authentication.
+
+    :param user_name: The user name to valid authentication on the API.
+    :return result: Boolean to valid if the user name exists to authenticate the API.
+    """
+
+    cfg = get_config_constant_file()
+
+    conn = session_to_db()
+
+    cursor = conn.cursor()
+
+    table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
+
+    sql_check = "SELECT EXISTS(SELECT 1 FROM {} WHERE user_name = {} LIMIT 1)".format(table_name, "'" + user_name + "'")
+
+    cursor.execute(sql_check)
+
+    result = cursor.fetchone()
+
+    return result
+
+
+# Transaction to update user' password  hashed on db to authenticate
+def update_user_password_hashed(user_name, password_hash):
+    r"""
+    Transaction to update password hashed of a user to authenticate on the API correctly.
+
+    :param user_name: The user name to update password hashed.
+    :param password_hash: The password hashed to authenticate on the API.
+    """
+
+    cfg = get_config_constant_file()
+
+    conn = session_to_db()
+
+    cursor = conn.cursor()
+
+    last_update_date = get_datenow_from_db(conn)
+
+    table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
+
+    # update row to database
+    sql_update_user = "UPDATE {} SET password_hash = %s, last_update_date = NOW() WHERE user_name = %s".format(
+        table_name
+    )
+
+    cursor.execute(sql_update_user, (password_hash, user_name,))
+
+    conn.commit()
+
+    close_cursor(cursor)
+
+
+def insert_user_authenticated(user_id, user_name, user_password, password_hash):
+    r"""
+    Transaction to add a user data to authenticate to API, inserted on the db.
+
+    :param user_id: The Id of the user to add on the db.
+    :param user_name: The user name of the user to add on the db.
+    :param user_password:  The password od the user to add on the db.
+    :param password_hash: The password hashed to authenticate on the API.
+    """
+
+    cfg = get_config_constant_file()
+
+    conn = session_to_db()
+
+    cursor = conn.cursor()
+
+    last_update_date = get_datenow_from_db(conn)
+
+    table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
+
+    data = (user_id, user_name, user_password, password_hash,)
+
+    sql_user_insert = 'INSERT INTO {} (user_id, user_name, user_password, password_hash) ' \
+                      'VALUES (%s, %s, %s, %s)'.format(table_name)
+
+    cursor.execute(sql_user_insert, data)
+
+    conn.commit()
+
+    logger.info('Usuario insertado %s', "{0}, User_Name: {1}".format(user_id, user_name))
+
+    close_cursor(cursor)
+
+
+# Function not used.
 def get_data_user_authentication(session, table_name, user_name):
     user_auth = []
 

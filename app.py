@@ -46,7 +46,7 @@ jwt = JWTManager(app)
 def activate_job():
     def run_job():
         while True:
-            time.sleep(3)
+            time.sleep(2)
 
     thread = threading.Thread(target=run_job)
     thread.start()
