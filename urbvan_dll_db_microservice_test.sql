@@ -29,6 +29,42 @@ CREATE TYPE urbvan."_van_vehicle" (
 	CATEGORY = A,
 	ELEMENT = urbvan.van_vehicle,
 	DELIMITER = ',');
+
+-- DROP TYPE urbvan.user_auth_api;
+
+CREATE TYPE urbvan.user_auth_api AS (
+	user_id numeric,
+	username varchar,
+	"password" varchar,
+	password_hash bpchar,
+	creation_date timestamp,
+	last_update_date timestamp);
+
+-- DROP TYPE urbvan.van_vehicle;
+
+CREATE TYPE urbvan.van_vehicle AS (
+	uuid_van uuid,
+	plates_van varchar,
+	economic_number_van varchar,
+	seats_van numeric,
+	created_at date,
+	status_van varchar,
+	last_update_date timestamp);
+
+-- DROP SEQUENCE urbvan.eco_num_van;
+
+CREATE SEQUENCE urbvan.eco_num_van
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE urbvan.eco_num_van OWNER TO postgres;
+GRANT ALL ON SEQUENCE urbvan.eco_num_van TO postgres;
 -- urbvan.user_auth_api definition
 
 -- Drop table
@@ -93,7 +129,9 @@ COMMENT ON COLUMN urbvan.van_vehicle.last_update_date IS 'Contiene la fecha de a
 ALTER TABLE urbvan.van_vehicle OWNER TO postgres;
 GRANT ALL ON TABLE urbvan.van_vehicle TO postgres;
 
+
+
+
 -- Permissions
 
 GRANT ALL ON SCHEMA urbvan TO postgres;
-

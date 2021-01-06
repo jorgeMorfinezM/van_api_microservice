@@ -9,20 +9,20 @@ __license__ = ""
 __history__ = """ """
 __version__ = "1.1.L31.2 ($Rev: 5 $)"
 
-from flask import Flask, jsonify, make_response, \
-    url_for, redirect, render_template, json, request, Response, url_for, flash, redirect, session
-from flask_jwt_extended import (create_access_token, create_refresh_token, jwt_required, jwt_refresh_token_required,
-                                get_jwt_identity, get_raw_jwt)
+import json
+import re
+import threading
+import time
+import uuid
+
+from flask import Flask, jsonify, render_template, json, request
 from flask_jwt_extended import JWTManager
+from passlib.hash import pbkdf2_sha256 as sha256
+
 from auth_controller.api_authentication import *
 from constants.constants import Constants as Const
 from logger_controller.logger_control import *
 from db_controller.database_backend import *
-from functools import wraps
-import threading
-import time
-import json
-import re
 
 
 logger = configure_ws_logger()
@@ -60,48 +60,79 @@ def main():
     return render_template('api_tv_orders.html')
 
 
-def get_orders_by_order_id(order_id, order_type):
-    pass
+def get_van_by_status(status_van):
 
-    database_cnx_data = []
-
-    session = session_to_db()
-
-    orders_header_list = []
+    van_list = []
 
     cfg = get_config_constant_file()
 
-    table_name = cfg['DB_ORACLE_OBJECTS']['ORDER_H']
+    table_name = cfg['DB_OBJECTS']['VAN_TABLE']
 
-    try:
+    van_status_list = select_van_by_status(table_name, status_van)
 
-        database_cnx_data = init_connection_data()
+    van_list = json.loads(van_status_list)
 
-        orders_list = select_orders_header(session, table_name, order_id, order_type)
+    if van_list:
 
-    except SQLAlchemyError as error:
-        raise mvc_exc.ConnectionError(
-            '"{}@{}" Can\'t connect to database, verify data connection to "{}".\nOriginal Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], error
-            )
-        )
-    except TimeoutError as timeoout_error:
-        raise mvc_exc.TimeoutError(
-            '"{}@{}" A TimeoutError was occurred while connect to database, verify data connection to "{}".\n'
-            'Original Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], timeoout_error
-            )
-        )
-    finally:
-        session.close()
+        logger.info('Van list by Status: {}: {}: '.format(status_van, van_list))
 
-    orders_header_list = json.loads(orders_list)
+        return van_list
 
-    if len(orders_header_list) != 0:
 
-        print('Order Data Header: ', orders_header_list)
+@app.route('/api/urbvan/vehicle/van/status/',  methods=['GET', 'OPTIONS'])
+@jwt_required
+def endpoint_list_van_by_status():
 
-        return orders_header_list
+    headers = request.headers
+    auth = headers.get('Authorization')
+
+    if not auth and 'Bearer' not in auth:
+        return request_unauthorized()
+    else:
+        if request.method == 'OPTIONS':
+            headers = {
+                'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+                'Access-Control-Max-Age': 1000,
+                'Access-Control-Allow-Headers': 'origin, x-csrftoken, content-type, accept',
+            }
+            return '', 200, headers
+
+        elif request.method == 'GET':
+
+            data = request.get_json(force=True)
+
+            status_van = data['status']
+
+            json_data = []
+
+            json_data = get_van_by_status(status_van)
+
+            if not status_van:
+                return request_conflict()
+
+            return json.dumps(json_data)
+
+        else:
+            return not_found()
+
+
+def get_van_by_uuid(uuid_van):
+
+    van_list = []
+
+    cfg = get_config_constant_file()
+
+    table_name = cfg['DB_OBJECTS']['VAN_TABLE']
+
+    van_uuid_list = select_van_by_uuid(table_name, uuid_van)
+
+    van_list = json.loads(van_uuid_list)
+
+    if van_list:
+
+        logger.info('Van list by UUID: {}: {}: '.format(uuid_van, van_list))
+
+        return van_list
 
 
 def insert_order_header(json_data_head):
@@ -239,124 +270,106 @@ def insert_order_header(json_data_head):
         return order_header_response
 
 
-@app.route('/api/urbvan/vehicle/van/status/',  methods=['GET', 'OPTIONS'])
-@jwt_required
-def endpoint_list_van_by_status():
-
-    headers = request.headers
-    auth = headers.get('Authorization')
-
-    if not auth and 'Bearer' not in auth:
-        return request_unauthorized()
-    else:
-        if request.method == 'OPTIONS':
-            headers = {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-                'Access-Control-Max-Age': 1000,
-                'Access-Control-Allow-Headers': 'origin, x-csrftoken, content-type, accept',
-            }
-            return '', 200, headers
-
-        elif request.method == 'GET':
-
-            data = request.get_json(force=True)
-
-            order_id = data['order_id']
-
-            json_data = []
-
-            json_data = get_orders_by_order_id(order_id)
-
-            if not order_id:
-                return request_conflict()
-
-            return json.dumps(json_data)
-
-        else:
-            return not_found()
-
-
-def get_order_status_by_id(order_id, order_type):
-
-    database_cnx_data = []
-
-    session = session_to_db()
-
-    status_order = []
+def update_van_data(uuid_van, plates_van, economic_number_van, seats_van, status_van):
+    van_updated = dict()
 
     cfg = get_config_constant_file()
 
-    table_name = cfg['DB_ORACLE_OBJECTS']['ORDER_H']
+    table_name = cfg['DB_OBJECTS']['VAN_TABLE']
 
-    try:
-        database_cnx_data = init_connection_data()
+    van_updated = update_van_data(table_name, uuid_van, plates_van, economic_number_van, seats_van, status_van)
 
-        order_status = select_status_order_by_id(session, table_name, order_id, order_type)
-
-    except SQLAlchemyError as error:
-        raise mvc_exc.ConnectionError(
-            '"{}@{}" Can\'t connect to database, verify data connection to "{}".\nOriginal Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], error
-            )
-        )
-    except TimeoutError as timeoout_error:
-        raise mvc_exc.TimeoutError(
-            '"{}@{}" A TimeoutError was occurred while connect to database, verify data connection to "{}".\n'
-            'Original Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], timeoout_error
-            )
-        )
-    finally:
-        session.close()
-
-    status_order = json.loads(order_status)
-
-    if len(status_order) != 0:
-        logger.info('Status Order: %s', str(status_order))
-
-        return status_order
+    return van_updated
 
 
-def update_order_status_by_id(order_id, order_type, order_status):
+def delete_van_vehicle(uuid_van, plate_van):
 
-    database_cnx_data = []
-
-    session = session_to_db()
-
-    status_ok = []
+    van_delete_msg = []
 
     cfg = get_config_constant_file()
 
-    table_name = cfg['DB_ORACLE_OBJECTS']['ORDER_H']
+    table_name = cfg['DB_OBJECTS']['VAN_TABLE']
+
+    van_delete_response = delete_van_data(table_name, uuid_van, plate_van)
+
+    van_delete_msg = json.loads(van_delete_response)
+
+    if len(van_delete_msg) != 0:
+        logger.info('Van deleted: %s', str(van_delete_msg))
+
+        return van_delete_msg
+
+
+def get_economic_number_van(economic_number_part):
+    conn = None
+    economic_number_van = None
 
     try:
-        database_cnx_data = init_connection_data()
 
-        status_updated = update_status_order_by_id(session, table_name, order_id, order_type, order_status)
+        conn = session_to_db()
+
+        economic_number_consecutive = get_nextval_economic_number_van(conn)
+
+        economic_number_van = economic_number_part + '-' + economic_number_consecutive
+
+        regex_eco_num = r"^(\w{2})-(\d{4})$"
+
+        math_part_eco_num = re.match(regex_eco_num, economic_number_van, re.M | re.I)
+
+        if math_part_eco_num:
+            return economic_number_van
 
     except SQLAlchemyError as error:
         raise mvc_exc.ConnectionError(
-            '"{}@{}" Can\'t connect to database, verify data connection to "{}".\nOriginal Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], error
-            )
-        )
-    except TimeoutError as timeoout_error:
-        raise mvc_exc.TimeoutError(
-            '"{}@{}" A TimeoutError was occurred while connect to database, verify data connection to "{}".\n'
-            'Original Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], timeoout_error
-            )
+            'Can\'t connect to database, verify data connection.\nOriginal Exception raised: {}'.format(error)
         )
     finally:
-        session.close()
+        disconnect_from_db(conn)
 
-    status_ok = json.loads(status_updated)
 
-    if len(status_ok) != 0:
-        logger.info('Status Order Updated: %s', str(status_ok))
+def manage_van_requested_data(data_van):
 
-        return status_ok
+    van_data_response = []
+
+    urbvan_obj = UrbvanModelDb()
+
+    try:
+
+        economic_number_van = str()
+
+        uuid_van = data_van['uuid_van']
+        plates_van = data_van['plate_van']
+        economic_number_part_van = data_van['economic_number']
+        seats_van = data_van['seats_number']
+        status_van = data_van['status']
+
+        regex_part_eco_num = r"^(\w{2})"
+
+        math_part_eco_num = re.match(regex_part_eco_num, economic_number_part_van, re.M | re.I)
+
+        if math_part_eco_num:
+
+            economic_number_van = get_economic_number_van(economic_number_part_van)
+
+            response_order = urbvan_obj.manage_van_vehicle_data(uuid_van,
+                                                                plates_van,
+                                                                economic_number_van,
+                                                                seats_van,
+                                                                status_van)
+
+            van_data_response = json.loads(response_order)
+
+            if len(van_data_response) != 0:
+                logger.info('Response Van Data: %s', str(van_data_response))
+
+                return van_data_response
+
+    except SQLAlchemyError as error:
+        raise mvc_exc.ConnectionError(
+            'Can\'t connect to database, verify data connection to "{}".\nOriginal Exception raised: {}'.format(
+                urbvan_obj.__tablename__, error
+            )
+        )
 
 
 @app.route('/api/urbvan/vehicle/van/', methods=['POST', 'GET', 'PUT', 'DELETE', 'OPTIONS'])
@@ -371,7 +384,6 @@ def endpoint_processing_van_data():
     else:
         if request.method == 'OPTIONS':
             headers = {
-                'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, GET, PUT, DELETE, OPTIONS',
                 'Access-Control-Max-Age': 1000,
                 'Access-Control-Allow-Headers': 'origin, x-csrftoken, content-type, accept',
@@ -387,7 +399,7 @@ def endpoint_processing_van_data():
 
             logger.info('Data Json Integrador to Manage on DB: %s', str(data))
 
-            json_order_response = manage_order_integration_data(data)
+            json_order_response = manage_van_requested_data(data)
 
             return json.dumps(json_order_response)
 
@@ -396,119 +408,78 @@ def endpoint_processing_van_data():
         elif request.method == 'GET':
             data = request.get_json(force=True)
 
-            logger.info('Data to get Order Status: %s', 'OrderId: {}, Order_Type: {}'.format(data['order_id'],
-                                                                                             data['order_type']))
+            uuid_van = data['uuid_van']
 
-            order_id = data['order_id']
-            order_type = data['order_type']
+            logger.info('List Van by UUID: %s', 'UUID_Van: {}'.format(uuid_van))
 
             json_data = []
 
-            if not order_id and not order_type:
+            if not uuid_van:
                 return request_conflict()
 
-            json_data = get_order_status_by_id(order_id, order_type)
+            json_data = get_van_by_uuid(uuid_van)
 
-            logger.info('Order Status Info: %s', json_data)
+            logger.info('Van by UUID Info: %s', json_data)
 
             return json.dumps(json_data)
 
         elif request.method == 'PUT':
 
-            status_order_updated = 'FAIL'
-
-            data = request.get_json(force=True)
+            data_van = request.get_json(force=True)
 
             logger.info('Data to get Order Status: %s',
                         "OrderId: {0}, Order_Type: {1}, Status: {2}".format(data['OrderId'],
                                                                             data['TipoPedido'],
                                                                             data['StatusPedido']))
 
-            order_id = data['OrderId']
-            order_type = data['TipoPedido']
-            order_status = data['StatusPedido']
+            economic_van_number = None
+
+            uuid_van = data_van['uuid_van']
+            plates_van = data_van['plate_van']
+            economic_number_part_van = data_van['economic_number']
+            seats_van = data_van['seats_number']
+            status_van = data_van['status']
+
+            regex_part_eco_num = r"^(\w{2})"
+
+            math_part_eco_num = re.match(regex_part_eco_num, economic_number_part_van, re.M | re.I)
+
+            if math_part_eco_num:
+
+                economic_van_number = get_economic_number_van(economic_number_part_van)
+
+            json_data = dict()
+
+            if not data_van:
+                return request_conflict()
+
+            json_data = update_van_data(uuid_van, plates_van, economic_van_number, seats_van, status_van)
+
+            logger.info('Van updated Info: %s', str(json_data))
+
+            return json_data
+
+        elif request.method == 'DELETE':
+            data = request.get_json(force=True)
+
+            uuid_van = data['uuid_van']
+            plate_van = data['plate_van']
+
+            logger.info('Van data to Delete: %s', 'UUID_Van: {}, Plate_Van: {}'.format(uuid_van, plate_van))
 
             json_data = []
 
-            if not order_id and not order_type and not order_status:
+            if not uuid_van and not plate_van:
                 return request_conflict()
 
-            json_data = update_order_status_by_id(order_id, order_type, order_status)
+            json_data = delete_van_vehicle(uuid_van, plate_van)
 
-            json_data_from_bd = json.dumps(json_data)
-            json_data_from_bd_loads = json.loads(json_data_from_bd)
+            logger.info('Van delete: %s', json_data)
 
-            for data_status in json_data_from_bd_loads:
-
-                data_status_dumps = json.dumps(data_status)
-                data_status_loads = json.loads(data_status_dumps)
-
-                status_order_updated = '{}'.format(data_status_loads["StatusOK"])
-
-                if 'OK' in status_order_updated:
-
-                    logger.info('Order Status Info: %s', str(json_data_from_bd))
-
-                    return json_data_from_bd
-
-        elif request.method == 'DELETE':
-            pass
+            return json.dumps(json_data)
 
         else:
             return not_found()
-
-
-def manage_order_integration_data(data_order_integration):
-
-    database_cnx_data = []
-
-    session = session_to_db()
-
-    order_integrator_response = []
-
-    try:
-
-        database_cnx_data = init_connection_data()
-
-        tipo_pedido = data_order_integration['tipo_pedido']
-        order_id = data_order_integration['order_id']
-        id_pedido_integrador = data_order_integration['id_pedido_integrador']
-        estatus_envio = data_order_integration['estatus_envio']
-        origen_envio = data_order_integration['origen_envio']
-        observaciones_request = data_order_integration['observaciones_request']
-        integrador_id = data_order_integration['integrador_id']
-        created_by = data_order_integration['created_by']
-        last_updated_by = data_order_integration['last_updated_by']
-
-        response_order = PedidosIntegracionApi.manage_pedidos_integracion_api(session, tipo_pedido, order_id,
-                                                                              id_pedido_integrador, estatus_envio,
-                                                                              origen_envio, observaciones_request,
-                                                                              integrador_id, created_by,
-                                                                              last_updated_by)
-
-    except SQLAlchemyError as error:
-        raise mvc_exc.ConnectionError(
-            '"{}@{}" Can\'t connect to database, verify data connection to "{}".\nOriginal Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], error
-            )
-        )
-    except TimeoutError as timeoout_error:
-        raise mvc_exc.TimeoutError(
-            '"{}@{}" A TimeoutError was occurred while connect to database, verify data connection to "{}".\n'
-            'Original Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], timeoout_error
-            )
-        )
-    finally:
-        session.close()
-
-    order_integrator_response = json.loads(response_order)
-
-    if len(order_integrator_response) != 0:
-
-        logger.info('Response Order Integrator BD: %s', str(order_integrator_response))
-
-        return order_integrator_response
 
 
 @app.errorhandler(404)
@@ -570,7 +541,6 @@ def get_authentication():
 
     if request.method == 'OPTIONS':
         headers = {
-            'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
             'Access-Control-Max-Age': 1000,
             'Access-Control-Allow-Headers': 'origin, x-csrftoken, content-type, accept',
@@ -594,7 +564,7 @@ def get_authentication():
 
         if match_email and 'MOMJ880813' in rfc and math_passwd:
 
-            password = password + '_' + rfc
+            password = sha256.encrypt(password + '_' + rfc)
 
             json_token = user_registration(user_name, password)
 

@@ -13,6 +13,7 @@ from passlib.hash import pbkdf2_sha256 as sha256
 from flask_jwt_extended import (create_access_token, create_refresh_token, jwt_required, jwt_refresh_token_required,
                                 get_jwt_identity, get_raw_jwt)
 from db_controller.database_backend import *
+import uuid
 
 
 logger = configure_ws_logger()
@@ -22,8 +23,8 @@ def generate_hash(password):
     return sha256.hash(password)
 
 
-def verify_hash(password, hash):
-    return sha256.verify(password, hash)
+def verify_hash(password, hash_passwd):
+    return sha256.verify(password, hash_passwd)
 
 
 def user_registration(user_name, user_password):
@@ -38,7 +39,11 @@ def user_registration(user_name, user_password):
 
             refresh_token = create_refresh_token(identity=user_name)
 
-            UsersAuth.manage_user_authentication('', user_name, user_password, password_hash)
+            id_user = uuid.uuid1()
+
+            UsersAuth.manage_user_authentication(id_user.int, user_name, user_password, password_hash)
+
+            # UsersAuth.manage_user_authentication('', user_name, user_password, password_hash)
 
             logger.info('User inserted/updated in database: %s',
                         ' User_Name: "{}", Password_Hash: "{}" '.format(user_name,

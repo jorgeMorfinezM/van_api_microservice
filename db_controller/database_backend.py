@@ -1,40 +1,47 @@
 # -*- coding: utf-8 -*-
 """
 Requires Python 3.8 or later
-"""
 
-__author__ = "Jorge Morfinez Mojica (jorge.morfinez.m@gmail.com)"
-__copyright__ = "Copyright 2020, Jorge Morfinez Mojica"
-__license__ = ""
-__history__ = """ """
-__version__ = "1.1.L31.2 ($Rev: 10 $)"
-
-"""Oracle DB backend (db-oracle).
+PostgreSQL DB backend (db-oracle).
 
 Each one of the CRUD operations should be able to open a database connection if
 there isn't already one available (check if there are any issues with this).
 
 Documentation:
+    About the Van data on the database to generate CRUD operations from endpoint of the API:
+    - Insert Van data
+    - Update Van data
+    - Delete Van data
+    - Search Van data by UUID
+    - Search Van data by Status
 
+    About the User to authenticate request endpoints on the API adding security to the operations:
+    - Validate user data
+    - Insert user data
+    - Update user password hashed
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, Numeric
-from sqlalchemy.engine.url import URL
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.exc import TimeoutError
-from sqlalchemy.exc import InternalError
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.exc import DatabaseError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from db_controller import mvc_exceptions as mvc_exc
-from constants.constants import Constants as Const
-from logger_controller.logger_control import *
-import psycopg2
-from datetime import datetime
-import json
 
+__author__ = "Jorge Morfinez Mojica (jorge.morfinez.m@gmail.com)"
+__copyright__ = "Copyright 2020, Jorge Morfinez Mojica"
+__license__ = ""
+__history__ = """ """
+__version__ = "1.1.L31.3 ($Rev: 20 $)"
+
+
+import re
+import json
 import logging
+from datetime import datetime
+
+import psycopg2
+from sqlalchemy import Column, String, Numeric
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.declarative import declarative_base
+
+from constants.constants import Constants as Const
+from db_controller import mvc_exceptions as mvc_exc
+from logger_controller.logger_control import *
 
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
@@ -69,6 +76,12 @@ def init_connect_db():
 
 
 def session_to_db():
+    r"""
+    Get and manage the session connect to the database engine.
+
+    :return connection: Object to connect to the database and transact on it.
+    """
+
     data_bd_connection = init_connect_db()
 
     connection = None
@@ -113,6 +126,13 @@ def scrub(input_string):
 
 
 def create_cursor(conn):
+    r"""
+    Create an object statement to transact to the database and manage his data.
+
+    :param conn: Objecto connector to the database.
+    :return cursor: Object statement to transact to the database with the connection.
+
+    """
     try:
         cursor = conn.cursor()
 
@@ -128,16 +148,36 @@ def create_cursor(conn):
 
 
 def disconnect_from_db(conn):
+    r"""
+    Generate close session to the database through the disconnection of the conn object.
+
+    :param conn: Object connector to close session.
+    """
+
     if conn is not None:
         conn.close()
 
 
 def close_cursor(cursor):
+    r"""
+    Generate close statement to the database through the disconnection of the cursor object.
+
+    :param cursor: Object cursor to close statement.
+    """
+
     if cursor is not None:
         cursor.close()
 
 
+# Deprecated
 def get_systimestamp_date(session):
+    r"""
+    Function deprecated. Do not use it.
+
+    :param session:
+    :return:
+    """
+
     last_updated_date_column = session.execute('SELECT systimestamp from dual').scalar()
 
     logger.info('Timestamp from DUAL: %s', last_updated_date_column)
@@ -146,6 +186,12 @@ def get_systimestamp_date(session):
 
 
 def get_datenow_from_db(conn):
+    r"""
+    Get the current date and hour from the database server to set to the row registered or updated.
+
+    :param conn: Object connection to sign a session into the database.
+    :return last_updated_date: The current day with hour to set the date value.
+    """
 
     cursor = None
     last_updated_date = None
@@ -176,6 +222,43 @@ def get_datenow_from_db(conn):
         disconnect_from_db(conn)
 
     return last_updated_date
+
+
+def get_nextval_economic_number_van(conn):
+    r"""
+    Get the next value number to set as part of Economic Number in a Van attribute.
+    Use it to create a new Van register on the database.
+
+    :param conn: Object to create a session to connect to the database.
+    :return economic_number_nextval: The next value data to set to the Van Economic Number.
+    """
+
+    cursor = None
+    economic_number_nextval = int()
+    sql_nextval_seq = ""
+
+    try:
+        sql_nextval_seq = "SELECT nextval('urbvan.eco_num_van')"
+
+        cursor = create_cursor(conn)
+
+        cursor.execute(sql_nextval_seq)
+
+        economic_number_nextval = cursor.fetchone()
+
+        close_cursor(cursor)
+
+        if economic_number_nextval:
+            return economic_number_nextval
+
+    except SQLAlchemyError as error:
+        conn.rollback()
+        logger.exception('An exception occurred while execute transaction: %s', error)
+        raise SQLAlchemyError(
+            "A SQL Exception {} occurred while transacting with the database.".format(error)
+        )
+    finally:
+        disconnect_from_db(conn)
 
 
 def exists_data_row(table_name, column_name, column_filter1, value1, column_filter2, value2):
@@ -384,7 +467,7 @@ def insert_new_van(table_name, uuid_van, plates_van, economic_number_van, seats_
 
         conn.commit()
 
-        logger.info('Vsn Vehicle inserted %s', "{0}, Plate: {1}".format(uuid_van, plates_van))
+        logger.info('Van Vehicle inserted %s', "{0}, Plate: {1}".format(uuid_van, plates_van))
 
         close_cursor(cursor)
 
@@ -806,13 +889,9 @@ class UsersAuth(Base):
     last_update_date = Column(cfg['DB_AUTH_COLUMNS_DATA']['USERS_ORDERS']['LAST_UPDATE_DATE'], String)
 
     @staticmethod
-    def manage_user_authentication(self, user_name, user_password, password_hash):
-
-        user_id = 0
+    def manage_user_authentication(user_id, user_name, user_password, password_hash):
 
         try:
-
-            user_id += 1
 
             user_verification = validate_user_exists(user_name)
 
@@ -824,8 +903,6 @@ class UsersAuth(Base):
 
             else:
                 # insert
-
-                user_id += 1
 
                 insert_user_authenticated(user_id, user_name, user_password, password_hash)
 
@@ -978,11 +1055,11 @@ def get_data_user_authentication(session, table_name, user_name):
 # Define y obtiene el configurador para las constantes del sistema:
 def get_config_constant_file():
     """
-        Contiene la obtencion del objeto config
-        para setear datos de constantes en archivo
-        configurador
+    Contiene la obtencion del objeto config
+    para setear datos de constantes en archivo
+    configurador.
 
-    :rtype: object
+    :return object: ocfg object, contain the Map to the constants allowed in Constants File configuration.
     """
 
     # PROD
