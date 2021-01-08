@@ -23,6 +23,7 @@ from auth_controller.api_authentication import *
 from constants.constants import Constants as Const
 from logger_controller.logger_control import *
 from db_controller.database_backend import *
+from model.VanModel import VanModel
 
 
 logger = configure_ws_logger()
@@ -135,141 +136,6 @@ def get_van_by_uuid(uuid_van):
         return van_list
 
 
-def insert_order_header(json_data_head):
-
-    database_cnx_data = []
-
-    session = session_to_db()
-
-    order_header_response = []
-
-    try:
-        database_cnx_data = init_connection_data()
-
-        tipo_pedido = json_data_head['tipo_pedido']
-        orderid = json_data_head['orderid']
-        orderguid = json_data_head['orderguid']
-        orderstatusid = json_data_head['orderstatusid']
-        paymentstatusid = json_data_head['paymentstatusid']
-        shippingstatusid = json_data_head['shippingstatusid']
-        customerlanguageid = json_data_head['customerlanguageid']
-        customertaxdisplaytypeid = json_data_head['customertaxdisplaytypeid']
-        ordersubtotalincltax = json_data_head['ordersubtotalincltax']
-        ordersubtotalexcltax = json_data_head['ordersubtotalexcltax']
-        ordersubtotaldiscountincltax = json_data_head['ordersubtotaldiscountincltax']
-        ordersubtotaldiscountexcltax = json_data_head['ordersubtotaldiscountexcltax']
-        ordershippingincltax = json_data_head['ordershippingincltax']
-        ordershippingexcltax = json_data_head['ordershippingexcltax']
-        paymethodaddfeeincltax = json_data_head['paymethodaddfeeincltax']
-        paymethodaddfeeexcltax = json_data_head['paymethodaddfeeexcltax']
-        taxrates = json_data_head['taxrates']
-        ordertax = json_data_head['ordertax']
-        ordertotal = json_data_head['ordertotal']
-        refundedamount = json_data_head['refundedamount']
-        orderdiscount = json_data_head['orderdiscount']
-        currencyrate = json_data_head['currencyrate']
-        customercurrencycode = json_data_head['customercurrencycode']
-        affiliateid = json_data_head['affiliateid']
-        affiliateurlfliendly = json_data_head['affiliateurlfliendly']
-        vatnumber = json_data_head['vatnumber']
-        usocfdi = json_data_head['usocfdi']
-        billingfirstname = json_data_head['billingfirstname']
-        billinglastname = json_data_head['billinglastname']
-        billingemail = json_data_head['billingemail']
-        billingcrmid = json_data_head['billingcrmid']
-        billingcountryid = json_data_head['billingcountryid']
-        billingcountryname = json_data_head['billingcountryname']
-        billingstateprovinceid = json_data_head['billingstateprovinceid']
-        billingstateprovincename = json_data_head['billingstateprovincename']
-        billingcity = json_data_head['billingcity']
-        billingaddress1 = json_data_head['billingaddress1']
-        billingaddress2 = json_data_head['billingaddress2']
-        billing_entrecalles = json_data_head['billing_entrecalles']
-        billing_numero_exterior = json_data_head['billing_numero_exterior']
-        billingzippostalcode = json_data_head['billingzippostalcode']
-        billingphonenumber = json_data_head['billingphonenumber']
-        billingfaxnumber = json_data_head['billingfaxnumber']
-        paymentmethodsystemname = json_data_head['paymentmethodsystemname']
-        paiddateutc = json_data_head['paiddateutc']
-        shippingfirstname = json_data_head['shippingfirstname']
-        shippinglastname = json_data_head['shippinglastname']
-        shippingemail = json_data_head['shippingemail']
-        # shippingcrmid = json_data_head['shippingcrmid']
-        shippingcountryid = json_data_head['shippingcountryid']
-        shippingcountryname = json_data_head['shippingcountryname']
-        shippingstateprovinceid = json_data_head['shippingstateprovinceid']
-        shippingstateprovincename = json_data_head['shippingstateprovincename']
-        shippingcity = json_data_head['shippingcity']
-        shippingaddress1 = json_data_head['shippingaddress1']
-        shippingaddress2 = json_data_head['shippingaddress2']
-        shipping_entrecalles = json_data_head['shippingentrecalles']
-        shipping_numero_exterior = json_data_head['shipping_numero_exterior']
-        shippingzippostalcode = json_data_head['shippingzippostalcode']
-        shippingphonenumber = json_data_head['shippingphonenumber']
-        shippingfaxnumber = json_data_head['shippingfaxnumber']
-        shippingmethod = json_data_head['shippingmethod']
-        shippingratecompmethodsysname = json_data_head['shippingratecompmethodsysname']
-        deleted = json_data_head['deleted']
-        createdonutc = json_data_head['createdonutc']
-        pickupinstore = json_data_head['pickupinstore']
-        agreement_id = json_data_head['agreement_id']
-        customer_id = json_data_head['customer_id']
-        billing_address_id = json_data_head['billing_address_id']
-        shipping_address_id = json_data_head['shipping_address_id']
-
-        order_response_header = OrderHeader.manage_orders_header(session, tipo_pedido, orderid, orderguid, orderstatusid,
-                                                                 paymentstatusid, shippingstatusid, customerlanguageid,
-                                                                 customertaxdisplaytypeid, ordersubtotalincltax,
-                                                                 ordersubtotalexcltax, ordersubtotaldiscountincltax,
-                                                                 ordersubtotaldiscountexcltax, ordershippingincltax,
-                                                                 ordershippingexcltax, paymethodaddfeeincltax,
-                                                                 paymethodaddfeeexcltax, taxrates, ordertax, ordertotal,
-                                                                 refundedamount, orderdiscount, currencyrate,
-                                                                 customercurrencycode, affiliateid, affiliateurlfliendly,
-                                                                 vatnumber, usocfdi, billingfirstname, billinglastname,
-                                                                 billingemail, billingcrmid, billingcountryid,
-                                                                 billingcountryname, billingstateprovinceid,
-                                                                 billingstateprovincename, billingcity, billingaddress1,
-                                                                 billingaddress2, billingzippostalcode,
-                                                                 billingphonenumber, billingfaxnumber,
-                                                                 paymentmethodsystemname, paiddateutc, shippingfirstname,
-                                                                 shippinglastname, shippingemail, shippingcountryid,
-                                                                 shippingcountryname, shippingstateprovinceid,
-                                                                 shippingstateprovincename, shippingcity,
-                                                                 shippingaddress1, shippingaddress2,
-                                                                 shippingzippostalcode, shippingphonenumber,
-                                                                 shippingfaxnumber, shippingmethod,
-                                                                 shippingratecompmethodsysname, deleted, createdonutc,
-                                                                 pickupinstore, shipping_entrecalles,
-                                                                 billing_entrecalles, billing_numero_exterior,
-                                                                 shipping_numero_exterior, agreement_id, customer_id,
-                                                                 billing_address_id, shipping_address_id)
-
-    except SQLAlchemyError as error:
-        raise mvc_exc.ConnectionError(
-            '"{}@{}" Can\'t connect to database, verify data connection to "{}".\nOriginal Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], error
-            )
-        )
-    except TimeoutError as timeoout_error:
-        raise mvc_exc.TimeoutError(
-            '"{}@{}" A TimeoutError was occurred while connect to database, verify data connection to "{}".\n'
-            'Original Exception raised: {}'.format(
-                database_cnx_data[1], database_cnx_data[0], database_cnx_data[4], timeoout_error
-            )
-        )
-    finally:
-        session.close()
-
-    order_header_response = json.loads(order_response_header)
-
-    if len(order_header_response) != 0:
-
-        logger.info('Response Order Header inserted: %s', str(order_header_response))
-
-        return order_header_response
-
-
 def update_van_data(uuid_van, plates_van, economic_number_van, seats_van, status_van):
     van_updated = dict()
 
@@ -337,7 +203,7 @@ def manage_van_requested_data(data_van):
 
         economic_number_van = str()
 
-        uuid_van = data_van['uuid_van']
+        # uuid_van = data_van['uuid_van']
         plates_van = data_van['plate_van']
         economic_number_part_van = data_van['economic_number']
         seats_van = data_van['seats_number']
@@ -351,18 +217,24 @@ def manage_van_requested_data(data_van):
 
             economic_number_van = get_economic_number_van(economic_number_part_van)
 
-            response_order = urbvan_obj.manage_van_vehicle_data(uuid_van,
-                                                                plates_van,
-                                                                economic_number_van,
-                                                                seats_van,
-                                                                status_van)
+            van_obj = VanModel(plates_van, economic_number_van, seats_van, status_van)
 
-            van_data_response = json.loads(response_order)
+            if van_obj.validate_status_apply(status_van):
 
-            if len(van_data_response) != 0:
-                logger.info('Response Van Data: %s', str(van_data_response))
+                uuid_van = van_obj.get_uuid_van()
 
-                return van_data_response
+                response_order = urbvan_obj.manage_van_vehicle_data(uuid_van,
+                                                                    plates_van,
+                                                                    economic_number_van,
+                                                                    seats_van,
+                                                                    status_van)
+
+                van_data_response = json.loads(response_order)
+
+                if len(van_data_response) != 0:
+                    logger.info('Response Van Data: %s', str(van_data_response))
+
+                    return van_data_response
 
     except SQLAlchemyError as error:
         raise mvc_exc.ConnectionError(
@@ -399,11 +271,9 @@ def endpoint_processing_van_data():
 
             logger.info('Data Json Integrador to Manage on DB: %s', str(data))
 
-            json_order_response = manage_van_requested_data(data)
+            json_van_response = manage_van_requested_data(data)
 
-            return json.dumps(json_order_response)
-
-            # return json.dumps(json_order_response)
+            return json.dumps(json_van_response)
 
         elif request.method == 'GET':
             data = request.get_json(force=True)
@@ -427,11 +297,10 @@ def endpoint_processing_van_data():
 
             data_van = request.get_json(force=True)
 
-            logger.info('Data to get Order Status: %s',
-                        "OrderId: {0}, Order_Type: {1}, Status: {2}".format(data['OrderId'],
-                                                                            data['TipoPedido'],
-                                                                            data['StatusPedido']))
+            if not data_van:
+                return request_conflict()
 
+            status_valid = False
             economic_van_number = None
 
             uuid_van = data_van['uuid_van']
@@ -448,16 +317,22 @@ def endpoint_processing_van_data():
 
                 economic_van_number = get_economic_number_van(economic_number_part_van)
 
+                status_valid = validate_status_applied(status_van)
+
+            logger.info('Data to update Van: %s',
+                        "UUID Van: {0}, Plate Van: {1}, Economic Number Van: {2}".format(uuid_van,
+                                                                                         plates_van,
+                                                                                         economic_van_number))
+
             json_data = dict()
 
-            if not data_van:
-                return request_conflict()
+            if status_valid:
 
-            json_data = update_van_data(uuid_van, plates_van, economic_van_number, seats_van, status_van)
+                json_data = update_van_data(uuid_van, plates_van, economic_van_number, seats_van, status_van)
 
-            logger.info('Van updated Info: %s', str(json_data))
+                logger.info('Van updated Info: %s', str(json_data))
 
-            return json_data
+                return json_data
 
         elif request.method == 'DELETE':
             data = request.get_json(force=True)
@@ -578,44 +453,22 @@ def get_authentication():
         return not_found()
 
 
-'''
-@jwt_refresh_token_required
-def check_auth(username, password):
-
-    current_user = get_jwt_identity()
-    access_token = create_access_token(identity=current_user)
-
-    return {'access_token': access_token}
-
-
-def authenticate():
-    message = {'message': "Authenticate."}
-    resp = jsonify(message)
-
-    resp.status_code = 401
-    resp.headers['WWW-Authenticate'] = 'Basic realm="Example"'
-
-    return resp
-
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth:
-            return authenticate()
-
-        elif not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-
-    return decorated
-
-'''
-
-
 def decimal_formatting(value):
     return ('%.2f' % value).rstrip('0').rstrip('.')
+
+
+def validate_status_applied(status_van):
+
+    status_valid = False
+
+    cfg = get_config_constant_file()
+
+    list_van_status_applied = cfg['VAN_STATUS_CHECK_LIST']
+
+    if status_van in list_van_status_applied:
+        status_valid = True
+
+    return status_valid
 
 
 # Define y obtiene el configurador para las constantes del sistema:
