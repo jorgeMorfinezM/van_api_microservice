@@ -58,7 +58,7 @@ this link can also be found under the Settings tab, in the Domains and certifica
 
 18.- If you wanna verify the LOG of the API, execute `heroku logs --tail` command.
  
-### Where I find for the Documentation App? ###
+### Where do I find the documentation for the App? ###
 
 * [Repo owner or admin](mailto:jorge.morfinez.m@gmail.com) 
 * [Repository Workspace](https://github.com/jorgeMorfinezM/urbvan_test_microservice)
