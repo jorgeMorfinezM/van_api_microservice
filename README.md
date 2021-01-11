@@ -63,4 +63,4 @@ this link can also be found under the Settings tab, in the Domains and certifica
 * [Repo owner or admin](mailto:jorge.morfinez.m@gmail.com) 
 * [Repository Workspace](https://github.com/jorgeMorfinezM/urbvan_test_microservice)
 * [API Use Documentation](https://urbvan-microservice-test.herokuapp.com/)
-* [Documentación del diseño de la API](shorturl.at/nsMSX)
+* [API Design Documentation](shorturl.at/nsMSX)
