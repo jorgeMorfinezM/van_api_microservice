@@ -11,10 +11,10 @@ DB_RDS:
 
 # DATABASE TABLES NAME
 DB_OBJECTS:
-  VAN_TABLE: 'van_vehicle'
+  VAN_TABLE: 'urbvan.van_vehicle'
 
 DB_AUTH_OBJECT:
-  USERS_AUTH: 'user_auth_api'
+  USERS_AUTH: 'urbvan.user_auth_api'
 
 DB_AUTH_COLUMNS_DATA:
   USER_AUTH:
@@ -40,5 +40,5 @@ LOG_RESOURCE:
   WS_FILE_LOG_NAME: 'api_ws_'
   DB_FILE_LOG_NAME: 'api_db_'
   APP_FILE_LOG_NAME: 'app_'
-  # DIRECTORY_LOG_FILES: '/ofix/tienda_virtual/parserCt/logs/' # TEST
-  DIRECTORY_LOG_FILES: '/var/www/html/apiTestOrdersTV/logs/' # PROD
+  DIRECTORY_LOG_FILES: '/home/jorgemm/Documentos/PycharmProjects/urbvan_microservice_test/logs/' # TEST
+  # DIRECTORY_LOG_FILES: '/var/www/html/apiTestOrdersTV/logs/' # PROD

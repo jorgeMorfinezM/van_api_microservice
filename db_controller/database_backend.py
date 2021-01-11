@@ -185,14 +185,14 @@ def get_systimestamp_date(session):
     return last_updated_date_column
 
 
-def get_datenow_from_db(conn):
+def get_datenow_from_db():
     r"""
     Get the current date and hour from the database server to set to the row registered or updated.
 
-    :param conn: Object connection to sign a session into the database.
     :return last_updated_date: The current day with hour to set the date value.
     """
 
+    conn = None
     cursor = None
     last_updated_date = None
     sql_nowdate = ''
@@ -201,6 +201,7 @@ def get_datenow_from_db(conn):
 
         sql_nowdate = 'SELECT now()'
 
+        conn = session_to_db()
         cursor = create_cursor(conn)
 
         cursor.execute(sql_nowdate)
@@ -257,8 +258,6 @@ def get_nextval_economic_number_van(conn):
         raise SQLAlchemyError(
             "A SQL Exception {} occurred while transacting with the database.".format(error)
         )
-    finally:
-        disconnect_from_db(conn)
 
 
 def exists_data_row(table_name, column_name, column_filter1, value1, column_filter2, value2):
@@ -882,11 +881,11 @@ class UsersAuth(Base):
 
     __tablename__ = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
 
-    user_id = Column(cfg['DB_AUTH_COLUMNS_DATA']['USERS_ORDERS']['USER_ID'], Numeric, primary_key=True)
-    user_name = Column(cfg['DB_AUTH_COLUMNS_DATA']['USERS_ORDERS']['USER_NAME'], String, primary_key=True)
-    user_password = Column(cfg['DB_AUTH_COLUMNS_DATA']['USERS_ORDERS']['USER_PASSWORD'], String)
-    password_hash = Column(cfg['DB_AUTH_COLUMNS_DATA']['USERS_ORDERS']['PASSWORD_HASH'], String)
-    last_update_date = Column(cfg['DB_AUTH_COLUMNS_DATA']['USERS_ORDERS']['LAST_UPDATE_DATE'], String)
+    user_id = Column(cfg['DB_AUTH_COLUMNS_DATA']['USER_AUTH']['USER_ID'], Numeric, primary_key=True)
+    user_name = Column(cfg['DB_AUTH_COLUMNS_DATA']['USER_AUTH']['USER_NAME'], String, primary_key=True)
+    user_password = Column(cfg['DB_AUTH_COLUMNS_DATA']['USER_AUTH']['USER_PASSWORD'], String)
+    password_hash = Column(cfg['DB_AUTH_COLUMNS_DATA']['USER_AUTH']['PASSWORD_HASH'], String)
+    last_update_date = Column(cfg['DB_AUTH_COLUMNS_DATA']['USER_AUTH']['LAST_UPDATE_DATE'], String)
 
     @staticmethod
     def manage_user_authentication(user_id, user_name, user_password, password_hash):
@@ -932,7 +931,7 @@ def validate_user_exists(user_name):
 
     table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
 
-    sql_check = "SELECT EXISTS(SELECT 1 FROM {} WHERE user_name = {} LIMIT 1)".format(table_name, "'" + user_name + "'")
+    sql_check = "SELECT EXISTS(SELECT 1 FROM {} WHERE username = {} LIMIT 1)".format(table_name, "'" + user_name + "'")
 
     cursor.execute(sql_check)
 
@@ -954,14 +953,14 @@ def update_user_password_hashed(user_name, password_hash):
 
     conn = session_to_db()
 
-    cursor = conn.cursor()
+    cursor = create_cursor(conn)
 
-    last_update_date = get_datenow_from_db(conn)
+    last_update_date = get_datenow_from_db()
 
     table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
 
     # update row to database
-    sql_update_user = "UPDATE {} SET password_hash = %s, last_update_date = NOW() WHERE user_name = %s".format(
+    sql_update_user = "UPDATE {} SET password_hash = %s, last_update_date = NOW() WHERE username = %s".format(
         table_name
     )
 
@@ -986,15 +985,15 @@ def insert_user_authenticated(user_id, user_name, user_password, password_hash):
 
     conn = session_to_db()
 
-    cursor = conn.cursor()
+    cursor = create_cursor(conn)
 
-    last_update_date = get_datenow_from_db(conn)
+    last_update_date = get_datenow_from_db()
 
     table_name = cfg['DB_AUTH_OBJECT']['USERS_AUTH']
 
     data = (user_id, user_name, user_password, password_hash,)
 
-    sql_user_insert = 'INSERT INTO {} (user_id, user_name, user_password, password_hash) ' \
+    sql_user_insert = 'INSERT INTO {} (user_id, username, password, password_hash) ' \
                       'VALUES (%s, %s, %s, %s)'.format(table_name)
 
     cursor.execute(sql_user_insert, data)
@@ -1066,7 +1065,7 @@ def get_config_constant_file():
     # _constants_file = "/var/www/html/apiTestOrdersTV/constants/constants.yml"
 
     # TEST
-    _constants_file = "constants/constants.yml"
+    _constants_file = "/home/jorgemm/Documentos/PycharmProjects/urbvan_microservice_test/constants/constants.yml"
 
     cfg = Const.get_constants_file(_constants_file)
 

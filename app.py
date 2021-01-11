@@ -7,7 +7,7 @@ __author__ = "Jorge Morfinez Mojica (jorge.morfinez.m@gmail.com)"
 __copyright__ = "Copyright 2020, Jorge Morfinez Mojica"
 __license__ = ""
 __history__ = """ """
-__version__ = "1.1.L31.2 ($Rev: 5 $)"
+__version__ = "1.1.A10.5 ($Rev: 25 $)"
 
 import json
 import re
@@ -17,7 +17,6 @@ import uuid
 
 from flask import Flask, jsonify, render_template, json, request
 from flask_jwt_extended import JWTManager
-from passlib.hash import pbkdf2_sha256 as sha256
 
 from auth_controller.api_authentication import *
 from constants.constants import Constants as Const
@@ -58,7 +57,7 @@ def activate_job():
 @app.route('/')
 def main():
 
-    return render_template('api_tv_orders.html')
+    return render_template('api_manage_van.html')
 
 
 def get_van_by_status(status_van):
@@ -136,7 +135,7 @@ def get_van_by_uuid(uuid_van):
         return van_list
 
 
-def update_van_data(uuid_van, plates_van, economic_number_van, seats_van, status_van):
+def update_van_data_endpoint(uuid_van, plates_van, economic_number_van, seats_van, status_van):
     van_updated = dict()
 
     cfg = get_config_constant_file()
@@ -328,7 +327,7 @@ def endpoint_processing_van_data():
 
             if status_valid:
 
-                json_data = update_van_data(uuid_van, plates_van, economic_van_number, seats_van, status_van)
+                json_data = update_van_data_endpoint(uuid_van, plates_van, economic_van_number, seats_van, status_van)
 
                 logger.info('Van updated Info: %s', str(json_data))
 
@@ -439,7 +438,7 @@ def get_authentication():
 
         if match_email and 'MOMJ880813' in rfc and math_passwd:
 
-            password = sha256.encrypt(password + '_' + rfc)
+            password = password + '_' + rfc
 
             json_token = user_registration(user_name, password)
 
@@ -483,7 +482,7 @@ def get_config_constant_file():
     # _constants_file = "/var/www/html/apiTestOrdersTV/constants/constants.yml"
 
     # TEST
-    _constants_file = "constants/constants.yml"
+    _constants_file = "/home/jorgemm/Documentos/PycharmProjects/urbvan_microservice_test/constants/constants.yml"
 
     cfg = Const.get_constants_file(_constants_file)
 

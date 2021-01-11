@@ -49,9 +49,9 @@ securityDefinitions:
 # Describe your paths here
 tags: 
   - name: "Search Van by Status"
-    description: "Endpoints a Header de Pedidos"
+    description: "Endpoint to looking for Van data by status defined"
   - name: "Manage Van"
-    description: "Endpoints a Detalle de Pedidos"
+    description: "Endpoint to manage Van data using: add, search, get, delete and update methods to and from the database"
   - name: "Authorization"
     description: "Endpoint to get Token Bearer POST the username and password registered"
 paths:
@@ -62,12 +62,12 @@ paths:
       description:
         Get the list of Van vehicles looking for by Status.
       parameters:
-        - name: OrderById
+        - name: SearchStatus
           in: body
-          description: Payload para obtener el estatus de una orden a partir de su Id.
+          description: Payload get the list of the Vans by valid status looking for.
           required: true
           schema:
-            $ref: '#/definitions/orderById'
+            $ref: '#/definitions/SearchStatus'
       responses:
         # Response code
         200:
@@ -77,13 +77,19 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/OrderStatus'
+              $ref: '#/definitions/VanVehicle'
         404:
           description: Page Not Found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+        409:
+          description: Request Data Conflict
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Error'
         401:
           description: 401 Unauthorized
           schema:
@@ -100,19 +106,18 @@ paths:
   /vehicle/van/:
     # This is a HTTP operation
     get:
-      tags: 
+      tags:
         - "Manage Van"
-      description: 
-        Obtiene la cabecera de una orden a partir de un ID de pedido y el tipo de pedido.
+      description:
+        Get the Van data from Van UUID.
       # This is array of GET operation parameters:
-      parameters: 
-        - name: OrderById
+      parameters:
+        - name: SearchVanId
           in: body
-          description: Payload para obtener el header de una orden a partir de su Id.
+          description: Payload to get the data of a Van by UUID.
           required: true
           schema:
-            $ref: '#/definitions/orderById'
-      
+            $ref: '#/definitions/SearchVanId'
       # Expected responses for this operation:
       responses:
         # Response code
@@ -123,13 +128,19 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/OrderHeader'
+              $ref: '#/definitions/VanVehicle'
         404:
           description: Page Not Found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+        409:
+          description: Request Data Conflict
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Error'
         401:
           description: 401 Unauthorized
           schema:
@@ -143,10 +154,17 @@ paths:
             items:
               $ref: '#/definitions/Error'
     post:
-      tags: 
+      tags:
         - "Manage Van"
-      description: 
-        Inserta la cabecera de una orden en base de datos.   
+      description:
+        Add Van vaslid data to register a new Van.
+      parameters:
+        - name: postVan
+          in: body
+          description: Payload to insert a Van record in database.
+          required: true
+          schema:
+            $ref: '#/definitions/postVan'
       responses:
         # Response code
         200:
@@ -154,13 +172,19 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/postOrderHeader'
+              $ref: '#/definitions/PostVanResponse'
         404:
           description: Page Not Found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+        409:
+          description: Request Data Conflict
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Error'
         401:
           description: 401 Unauthorized
           schema:
@@ -177,14 +201,14 @@ paths:
       tags:
         - "Manage Van"
       description:
-        Actualiza el estatus de un pedido a partir de un Id y su tipo.
+        Updates the Van data of a particular record in the database.
       parameters:
-        - name: OrderStatus
+        - name: putVan
           in: body
-          description: Payload para actualizar el estatus de una orden a partir de su Id.
+          description: Payload to update Van valid data.
           required: true
           schema:
-            $ref: '#/definitions/OrderStatus'
+            $ref: '#/definitions/putVan'
       responses:
         # Response code
         200:
@@ -194,13 +218,19 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/StatusOK'
+              $ref: '#/definitions/putVanResponse'
         404:
           description: Page Not Found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+        409:
+          description: Request Data Conflict
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Error'
         401:
           description: 401 Unauthorized
           schema:
@@ -217,7 +247,14 @@ paths:
       tags:
         - "Manage Van"
       description:
-        Inserta el detalle (partidas) de una orden en base de datos.
+        Deletes a record of a Van from the database.
+      parameters:
+        - name: deleteVan
+          in: body
+          description: Payload to looking for and delete a specific record.
+          required: true
+          schema:
+            $ref: '#/definitions/deleteVan'
       responses:
         # Response code
         200:
@@ -225,13 +262,19 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/postOrderDetail'
+              $ref: '#/definitions/deleteVanResponse'
         404:
           description: Page Not Found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+        409:
+          description: Request Data Conflict
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Error'
         401:
           description: 401 Unauthorized
           schema:
@@ -249,12 +292,12 @@ paths:
     post:
       tags:
         - "Authorization"
-      description: 
-        Obtiene Bearer Token a partir de usuario y contrasena registrados en la API
+      description:
+        Get Bearer Token by username, password and RFC user to authenticate to the API endpoints.
       parameters:
         - name: Authorization
           in: body
-          description: Payload con credenciales de autenticacion a API
+          description: Payload with authentication credentials to API.
           required: true
           schema:
             $ref: '#/definitions/Authorization'
@@ -272,6 +315,12 @@ paths:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
+        409:
+          description: Request Data Conflict
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Error'
         401:
           description: 401 Unauthorized
           schema:
@@ -284,504 +333,186 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Error'
-          
+
 definitions:
-  orderById:
+  SearchStatus:
     allOf:
-      - $ref: '#/definitions/orderById'
+      - $ref: '#/definitions/SearchStatus'
       - required:
-        - order_id
-        - order_type
+          - statusVan
         type: "object"
         properties:
-          order_id:
-            type: integer
-            format: int64
-          order_type:
+          StatusVan:
+            type: string
+
+  VanVehicle:
+    allOf:
+      - $ref: '#/definitions/VanVehicle'
+      - required:
+          - UUID
+          - Plate
+          - EconomicNumber
+          - SeatsNumber
+          - Status
+          - CreationDate
+          - LastUpdateDate
+        type: "object"
+        properties:
+          UUID:
+            type: string
+          Plate:
+            type: string
+          EconomicNumber:
+            type: string
+          SeatsNumber:
+            type: string
+          Status:
+            type: string
+          CreationDate:
+            type: string
+          LastUpdateDate:
+            type: string
+
+  SearchVanId:
+    allOf:
+      - $ref: '#/definitions/SearchVanId'
+      - required:
+        - uuid_van
+        type: "object"
+        properties:
+          uuid_van:
             type: string
             format: string
 
-  productSku:
-    type: "object"
-    required:
-      - sku  
-    properties:
-      sku:
-        type: string
-      
-  OrderHeader:
+  postVan:
     allOf:
-      - $ref: '#/definitions/OrderHeader'
+      - $ref: '#/definitions/postVan'
       - required:
-        - OrderId
-        - RfcCliente
-        - NombreCliente
-        - NumeroCliente
-        - Domicilio
-        - Ciudad
-        - Estado
-        - CodigoPostal
-        - Pais
-        - TelefonoCliente
-        - EmailCliente
-        - ImportePedido
-        - ImpuestoPedido
-        - TotalPedido
-        - FormaPago
-        - MetodoPago
-        - FechaPedido
+          - plate_van
+          - economic_number
+          - seats_number
+          - status
         type: "object"
         properties:
-          OrderId:
-            type: number
+          plate_van:
+            type: string
+          economic_number:
+            type: string
+          seats_number:
+            type: integer
             format: int64
-          RfcCliente:
+          status:
             type: string
-          NombreCliente:
-            type: string
-          NumeroCliente:
-            type: string
-          Domicilio:
-            type: string
-          Ciudad:
-            type: string
-          Estado:
-            type: string
-          CodigoPostal:
-            type: string
-          Pais:
-            type: string
-          TelefonoCliente:
-            type: string
-          EmailCliente:
-            type: string
-          ImportePedido:
-            type: number
-            format: double
-          ImpuestoPedido:
-            type: number
-            format: double
-          TotalPedido:
-            type: number
-            format: double
-          FormaPago:
-            type: string
-          MetodoPago:
-            type: string
-          FechaPedido:
-            type: string
-  
-  OrderDetail:
+
+  PostVanResponse:
     allOf:
-      - $ref: '#/definitions/OrderDetail'
+      - $ref: '#/definitions/PostVanResponse'
       - required:
-        - OrderId
-        - Cantidad
-        - SKUProducto
-        - NombreProducto
-        - CodigoFabricante
-        - UnidadMedida
-        - ImporteUnitario
-        - ImpuestoUnitario
-        - TotalUnitario
-        - DesctoUnitario
-        - ImporteTotal
-        - TotalOrder
+          - UUID
+          - Plate
+          - EconomicNumber
+          - SeatsNumber
+          - Status
+          - CreationDate
+          - Message
         type: "object"
         properties:
-          OrderId:
-            type: integer
-            format: int64
-          Cantidad:
-            type: integer
-            format: int64
-          SKUProducto:
+          UUID:
             type: string
-          NombreProducto: 
+          Plate:
             type: string
-          CodigoFabricante:
+          EconomicNumber:
             type: string
-          UnidadMedida:
+          SeatsNumber:
             type: string
-          ImporteUnitario: 
-            type: number
-            format: double
-          ImpuestoUnitario: 
-            type: number
-            format: double
-          TotalUnitario:
-            type: number
-            format: double
-          DesctoUnitario: 
-            type: number
-            format: double
-          ImporteTotal: 
-            type: number
-            format: double
-          TotalOrder:
-            type: number
-            format: double
-            
-  postOrderHeader:
+          Status:
+            type: string
+          CreationDate:
+            type: string
+          Message:
+            type: string
+
+  putVan:
     allOf:
-      - $ref: '#/definitions/postOrderHeader'
+      - $ref: '#/definitions/putVan'
       - required:
-        - tipo_pedido
-        - orderid
-        - orderguid
-        - orderstatusid
-        - paymentstatusid
-        - shippingstatusid
-        - customerlanguageid
-        - customertaxdisplaytypeid
-        - ordersubtotalincltax
-        - ordersubtotalexcltax
-        - ordersubtotaldiscountincltax
-        - ordersubtotaldiscountexcltax
-        - ordershippingincltax
-        - ordershippingexcltax
-        - paymethodaddfeeincltax
-        - paymethodaddfeeexcltax
-        - taxrates
-        - ordertax
-        - ordertotal
-        - refundedamount
-        - orderdiscount
-        - currencyrate
-        - customercurrencycode
-        - affiliateid
-        - affiliateurlfliendly
-        - vatnumber
-        - usocfdi
-        - billingfirstname
-        - billinglastname
-        - billingemail
-        - billingcrmid
-        - billingcountryid
-        - billingcountryname
-        - billingstateprovinceid
-        - billingstateprovincename
-        - billingcity
-        - billingaddress1
-        - billingaddress2
-        - billingzippostalcode
-        - billingphonenumber
-        - billingfaxnumber
-        - paymentmethodsystemname
-        - paiddateutc
-        - shippingfirstname
-        - shippinglastname
-        - shippingemail
-        - shippingcrmid
-        - shippingcountryid
-        - shippingcountryname
-        - shippingstateprovinceid
-        - shippingstateprovincename
-        - shippingcity
-        - shippingaddress1
-        - shippingaddress2
-        - shippingzippostalcode
-        - shippingphonenumber
-        - shippingfaxnumber
-        - shippingmethod
-        - shippingratecompmethodsysname
-        - deleted
-        - createdonutc
-        - created_by
-        - last_updated_by
-        - pickupinstore
+          - uuid_van
+          - plate_van
+          - economic_number
+          - seats_number
+          - status
         type: "object"
         properties:
-            tipo_pedido:
-              type: string
-            orderid:
-              type: integer
-              format: int64
-            orderguid:
-              type: string
-            orderstatusid:
-              type: integer
-              format: int64
-            paymentstatusid:
-              type: integer
-              format: int64
-            shippingstatusid:
-              type: integer
-              format: int64
-            customerlanguageid:
-              type: integer
-              format: int64
-            customertaxdisplaytypeid:
-              type: integer
-              format: int64
-            ordersubtotalincltax:
-              type: number
-              format: double
-            ordersubtotalexcltax:
-              type: number
-              format: double
-            ordersubtotaldiscountincltax:
-              type: number
-              format: double
-            ordersubtotaldiscountexcltax:
-              type: number
-              format: double
-            ordershippingincltax:
-              type: number
-              format: double
-            ordershippingexcltax:
-              type: number
-              format: double
-            paymethodaddfeeincltax:
-              type: number
-              format: double
-            paymethodaddfeeexcltax:
-              type: number
-              format: double
-            taxrates:
-              type: string
-            ordertax:
-              type: number
-              format: double
-            ordertotal:
-              type: number
-              format: double
-            refundedamount:
-              type: number
-              format: double
-            orderdiscount:
-              type: number
-              format: double
-            currencyrate:
-              type: string
-            customercurrencycode:
-              type: string
-            affiliateid:
-              type: string
-            affiliateurlfliendly:
-              type: string
-            vatnumber:
-              type: string
-            usocfdi:
-              type: string
-            billingfirstname:
-              type: string
-            billinglastname:
-              type: string
-            billingemail:
-              type: string
-            billingcrmid:
-              type: string
-            billingcountryid:
-              type: integer
-              format: int64
-            billingcountryname:
-              type: string
-            billingstateprovinceid:
-              type: integer
-              format: int64
-            billingstateprovincename:
-              type: string
-            billingcity:
-              type: string
-            billingaddress1:
-              type: string
-            billingaddress2:
-              type: string
-            billingzippostalcode:
-              type: string
-            billingphonenumber:
-              type: string
-            billingfaxnumber:
-              type: string
-            paymentmethodsystemname:
-              type: string
-            paiddateutc:
-              type: string
-            shippingfirstname:
-              type: string
-            shippinglastname:
-              type: string
-            shippingemail:
-              type: string
-            shippingcrmid:
-              type: string
-            shippingcountryid:
-              type: integer
-              format: int64
-            shippingcountryname:
-              type: string
-            shippingstateprovinceid:
-              type: integer
-              format: int64
-            shippingstateprovincename:
-              type: string
-            shippingcity:
-              type: string
-            shippingaddress1:
-              type: string
-            shippingaddress2:
-              type: string
-            shippingzippostalcode:
-              type: string
-            shippingphonenumber:
-              type: string
-            shippingfaxnumber:
-              type: string
-            shippingmethod:
-              type: string
-            shippingratecompmethodsysname:
-              type: string
-            deleted:
-              type: string
-            createdonutc:
-              type: string
-            created_by:
-              type: string
-            last_updated_by:
-              type: string
-            pickupinstore:
-              type: boolean
-  
-  postOrderDetail:
+          uuid_van:
+            type: string
+          plate_van:
+            type: string
+          economic_number:
+            type: string
+          seats_number:
+            type: integer
+            format: int64
+          status:
+            type: string
+
+  putVanResponse:
     allOf:
-      - $ref: '#/definitions/postOrderDetail'
+      - $ref: '#/definitions/putVanResponse'
       - required:
-        - tipo_pedido
-        - orderid
-        - orderitemguid
-        - productid
-        - productname
-        - sku
-        - manufacturerpartnumber
-        - vendorid
-        - unitpriceincltax
-        - unitpriceexcltax
-        - priceincltax
-        - priceexcltax
-        - quantity
-        - discountamountincltax
-        - discountamountexcltax
-        - created_by
-        - last_updated_by
-        - uom
-        - line_number
-        - inventory_item
-        - inventory_item_id
-        - tax_code
+          - UUID
+          - Plate
+          - EconomicNumber
+          - SeatsNumber
+          - Status
+          - LastUpdateDate
+          - Message
         type: "object"
         properties:
-          tipo_pedido:
+          UUID:
             type: string
-          orderid:
+          Plate:
+            type: string
+          EconomicNumber:
+            type: string
+          SeatsNumber:
             type: integer
             format: int64
-          orderitemguid:
+          Status:
             type: string
-          productid:
+          LastUpdateDate:
             type: string
-          productname:
+          Message:
             type: string
-          sku:
-            type: string
-          manufacturerpartnumber:
-            type: string
-          vendorid:
-            type: integer
-            format: int64
-          unitpriceincltax:
-            type: number
-            format: double
-          unitpriceexcltax:
-            type: number
-            format: double
-          priceincltax:
-            type: number
-            format: double
-          priceexcltax:
-            type: number
-            format: double
-          quantity:
-            type: integer
-            format: int64
-          discountamountincltax:
-            type: number
-            format: double
-          discountamountexcltax:
-            type: number
-            format: double
-          created_by:
-            type: integer
-            format: int64
-          last_updated_by:
-            type: integer
-            format: int64
-          uom:
-            type: string
-          line_number:
-            type: integer
-            format: int64
-          inventory_item:
-            type: string
-          inventory_item_id:
-            type: string
-          tax_code:
-            type: string
-              
-  OrderStatus:
+
+  deleteVan:
     allOf:
-      - $ref: '#/definitions/OrderStatus'
+      - $ref: '#/definitions/deleteVan'
       - required:
-        - OrderId
-        - StatusPedido
-        - TipoPedido
-        type: "object" 
-        properties:
-          OrderId: 
-            type: integer
-            format: int64
-          StatusPedido: 
-            type: string
-          TipoPedido:
-            type: string
-  
-  StatusOK:
-    allOf:
-      - $ref: '#/definitions/StatusOK'
-      - required:
-        - OrderId
-        - StatusOK
-        - TipoPedido
-        type: "object" 
-        properties:
-          OrderId: 
-            type: integer
-            format: int64
-          StatusOK: 
-            type: string
-          TipoPedido:
-            type: string
-            
-  SkuData:
-    allOf:
-      - $ref: '#/definitions/SkuData'
-      - required:
-        - Sku
-        - InventoryItemId
-        - UOM
-        - TaxCode
+          - uuid_van
+          - plate_van
         type: "object"
         properties:
-          Sku:
+          uuid_van:
             type: string
-          InventoryItemId:
-            type: integer
-            format: int64
-          UOM:
+          plate_van:
             type: string
-          TaxCode:
+
+  deleteVanResponse:
+    allOf:
+      - $ref: '#/definitions/deleteVanResponse'
+      - required:
+        - UUID
+        - Plate
+        - Message
+        type: "object"
+        properties:
+          UUID:
             type: string
-  
+          Plate:
+            type: string
+          Message:
+            type: string
+
   Error:
     allOf:
       - $ref: '#/definitions/Error'
@@ -800,13 +531,16 @@ definitions:
     allOf:
       - $ref: '#/definitions/Authorization'
       - required:
-        - user_name
+        - username
         - password
+        - rfc_client
         type: "object"
         properties:
-          user_name:
+          username:
             type: string
           password:
+            type: string
+          rfc_client:
             type: string
 
   TokenRequest:
