@@ -339,10 +339,10 @@ definitions:
     allOf:
       - $ref: '#/definitions/SearchStatus'
       - required:
-          - statusVan
+          - status
         type: "object"
         properties:
-          StatusVan:
+          status:
             type: string
 
   VanVehicle:
