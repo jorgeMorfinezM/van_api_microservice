@@ -57,6 +57,25 @@ this link can also be found under the Settings tab, in the Domains and certifica
 17.- If you wanna change the API code, make the change need to execute the 10 to 15 steps. 
 
 18.- If you wanna verify the LOG of the API, execute `heroku logs --tail` command.
+
+### How to deploy it if I have an Heroku account? ###
+
+1.- Install the Heroku CLI Platform as a Service [following the instructions](https://devcenter.heroku.com/articles/heroku-command-line)
+
+2.- If you haven't already, log in to your Heroku account and follow the prompts to create a new SSH public key.
+`$ heroku login`
+
+3.- Clone the repository:
+
+    3.1. Use Git to clone urbvan-microservice-test's source code to your local machine. First execute command line: 
+      `$ heroku git:clone -a urbvan-microservice-test`. 
+    3.2.- Then, by command line, access to your local repository using: `$ cd urbvan-microservice-test`
+
+4.- Deploy your changes. Make some changes to the code you just cloned and deploy them to Heroku using Git.
+
+    4.1.- `$ git add .`
+    4.2.- `$ git commit -am "make it better"`
+    4.3.- `$ git push heroku master`
  
 ### Where do I find the documentation for the App? ###
 
