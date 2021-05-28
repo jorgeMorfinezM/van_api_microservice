@@ -1,5 +1,5 @@
-# Urbvan Test Microservice
-API Rest Microservice - Urbvan postulation Test
+# Van Test Microservice
+API Rest Microservice - Van Test
 
 This README sets the use of this application to deploy the microservice API Rest.
 
@@ -12,11 +12,11 @@ This README sets the use of this application to deploy the microservice API Rest
 
 ### How do I get set up/deploy it? ###
 
-1.- Go to the GitHub remote repository: [GitHub remote microservice repository](https://github.com/jorgeMorfinezM/urbvan_test_microservice) and validate the 
+1.- Go to the GitHub remote repository: [GitHub remote microservice repository](https://github.com/jorgeMorfinezM/van_api_microservice) and validate the 
 steps of this Readme deployment documentation/API code and general data.
 
 2.- On your CLI (Command Line Interface) tool, clone the remote repository from the 1st step using the version control 
-systemGit command on your local path repository/directory. 
+system Git command on your local path repository/directory. 
 
 3.- Verify all code/data from GitHub remote repository are on the local repo.
 
@@ -67,9 +67,9 @@ this link can also be found under the Settings tab, in the Domains and certifica
 
 3.- Clone the repository:
 
-    3.1. Use Git to clone urbvan-microservice-test's source code to your local machine. First execute command line: 
-      `$ heroku git:clone -a urbvan-microservice-test`. 
-    3.2.- Then, by command line, access to your local repository using: `$ cd urbvan-microservice-test`
+    3.1. Use Git to clone van-api-microservice's source code to your local machine. First execute command line: 
+      `$ heroku git:clone -a van-api-microservice`. 
+    3.2.- Then, by command line, access to your local repository using: `$ cd van-api-microservice`
 
 4.- Deploy your changes. Make some changes to the code you just cloned and deploy them to Heroku using Git.
 
@@ -80,6 +80,6 @@ this link can also be found under the Settings tab, in the Domains and certifica
 ### Where do I find the documentation for the App? ###
 
 * [Repo owner or admin](mailto:jorge.morfinez.m@gmail.com) 
-* [Repository Workspace](https://github.com/jorgeMorfinezM/urbvan_test_microservice)
+* [Repository Workspace](https://github.com/jorgeMorfinezM/van_api_microservice)
 * [API Use Documentation](https://urbvan-microservice-test.herokuapp.com/)
 * [API Design Documentation](shorturl.at/nsMSX)
