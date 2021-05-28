@@ -111,10 +111,10 @@ class VanModel:
         """
 
         # PROD
-        # _constants_file = "/var/www/html/apiTestOrdersTV/constants/constants.yml"
+        # _constants_file = "/path/to/api/prod/constants/constants.yml"
 
         # TEST
-        _constants_file = "/home/jorgemm/Documentos/PycharmProjects/urbvan_microservice_test/constants/constants.yml"
+        _constants_file = "/path/to/api/test/constants/constants.yml"
 
         cls.cfg = Constants.get_constants_file(_constants_file)
 
