@@ -6,25 +6,25 @@ swagger: '2.0'
 # This is your document metadata
 info:
   version: "1.1.0"
-  title: Urbvan Van Vehicle API Manager
+  title: Van Vehicle API Manager
   description: |
     </br>
-    API to Manage Van vehicles to Urbvan.
+    API to Manage Van vehicles.
     CRUD functions can be applied to manage the data.
     </br>
     </br>
   contact: 
       name: API Support
-      url: https://github.com/jorgeMorfinezM/urbvan_test_microservice/blob/main/README.md
+      url: https://github.com/jorgeMorfinezM/van_api_microservice/blob/main/README.md
       email: jorge.morfinez.m@gmail.com
-  termsOfService: https://www.ofix.com.mx/conditionsofuse
+  termsOfService: 
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   
 host:
   localhost:5000
-basePath: "/api/urbvan"
+basePath: "/api/van"
 schemes:
   - http
   - https
@@ -43,8 +43,8 @@ securityDefinitions:
     description: Contiene la llamada a autenticar la API para obtener el Bearer Token 
     type: oauth2
     flow: accessCode
-    authorizationUrl: http://localhost:5000/api/urbvan/authorization/
-    tokenUrl: http://127.0.0.1:5000/api/urbvan/authorization/
+    authorizationUrl: http://localhost:5000/api/van/authorization/
+    tokenUrl: http://127.0.0.1:5000/api/van/authorization/
     
 # Describe your paths here
 tags: 
