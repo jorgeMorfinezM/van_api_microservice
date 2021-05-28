@@ -79,7 +79,7 @@ def get_van_by_status(status_van):
         return van_list
 
 
-@app.route('/api/urbvan/vehicle/van/status/',  methods=['GET', 'OPTIONS'])
+@app.route('/api/van/vehicle/status/',  methods=['GET', 'OPTIONS'])
 @jwt_required
 def endpoint_list_van_by_status():
 
@@ -243,7 +243,7 @@ def manage_van_requested_data(data_van):
         )
 
 
-@app.route('/api/urbvan/vehicle/van/', methods=['POST', 'GET', 'PUT', 'DELETE', 'OPTIONS'])
+@app.route('/api/van/vehicle/', methods=['POST', 'GET', 'PUT', 'DELETE', 'OPTIONS'])
 @jwt_required
 def endpoint_processing_van_data():
 
@@ -408,7 +408,7 @@ def request_conflict(error=None):
     return resp
 
 
-@app.route('/api/urbvan/authorization/', methods=['POST', 'OPTIONS'])
+@app.route('/api/van/authorization/', methods=['POST', 'OPTIONS'])
 def get_authentication():
 
     json_token = {}
@@ -479,10 +479,10 @@ def get_config_constant_file():
     :rtype: object
     """
     # PROD
-    # _constants_file = "/var/www/html/apiTestOrdersTV/constants/constants.yml"
+    # _constants_file = "/path/to/api/prod/constants/constants.yml"
 
     # TEST
-    _constants_file = "/home/jorgemm/Documentos/PycharmProjects/urbvan_microservice_test/constants/constants.yml"
+    _constants_file = "/path/to/api/test/constants/constants.yml"
 
     cfg = Const.get_constants_file(_constants_file)
 
